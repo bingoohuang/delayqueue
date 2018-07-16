@@ -6,17 +6,23 @@ import lombok.val;
 import org.joda.time.DateTime;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toMap;
 
 @Slf4j
-public class TaskService implements Runnable {
+public class TaskRunner implements Runnable {
     private final TaskConfig config;
     private volatile boolean stop = false;
 
-    public TaskService(TaskConfig config) {
+    /**
+     * 任务运行构造器。
+     *
+     * @param config 配置
+     */
+    public TaskRunner(TaskConfig config) {
         this.config = config;
     }
 
@@ -27,7 +33,7 @@ public class TaskService implements Runnable {
      */
     public void submit(TaskItemVo task) {
         config.getTaskDao().add(task.createTaskItem(), config.getTaskTableName());
-        config.getJedis().zadd(config.getQueueKey(), task.getReadyTime().getMillis(), task.getTaskId());
+        config.getJedis().zadd(config.getQueueKey(), task.getRunAt().getMillis(), task.getTaskId());
     }
 
     /**
@@ -37,7 +43,7 @@ public class TaskService implements Runnable {
      */
     public void submit(List<TaskItemVo> tasks) {
         config.getTaskDao().add(tasks.stream().map(TaskItemVo::createTaskItem).collect(Collectors.toList()), config.getTaskTableName());
-        val map = tasks.stream().collect(toMap(TaskItemVo::getTaskId, x -> (double) (x.getReadyTime().getMillis())));
+        val map = tasks.stream().collect(toMap(TaskItemVo::getTaskId, x -> (double) (x.getRunAt().getMillis())));
         config.getJedis().zadd(config.getQueueKey(), map);
     }
 
@@ -66,13 +72,13 @@ public class TaskService implements Runnable {
     }
 
     /**
-     * 刚启动时，查询所有可以执行的任务
+     * 刚启动时，查询所有可以执行的任务，添加到执行列表中。
      */
     public void initialize() {
         val tasks = config.getTaskDao().listReady(config.getTaskTableName());
         if (tasks.isEmpty()) return;
 
-        val map = tasks.stream().collect(toMap(TaskItem::getTaskId, x -> (double) (x.getReadyTime().getMillis())));
+        val map = tasks.stream().collect(toMap(TaskItem::getTaskId, x -> (double) (x.getRunAt().getMillis())));
         config.getJedis().zadd(config.getQueueKey(), map);
     }
 
@@ -88,6 +94,9 @@ public class TaskService implements Runnable {
         }
     }
 
+    /**
+     * 停止循环运行。
+     */
     public void stop() {
         stop = true;
     }
@@ -96,8 +105,7 @@ public class TaskService implements Runnable {
      * 运行一次任务。此方法需要放在循环中调用，或者每秒触发一次，以保证实时性。
      */
     public void fire() {
-        val taskIds = config.getJedis().zrangeByScore(config.getQueueKey(), 0, System.currentTimeMillis());
-
+        val taskIds = config.getJedis().zrangeByScore(config.getQueueKey(), 0, System.currentTimeMillis(), 0, 1);
         if (taskIds.isEmpty()) {
             Util.randomSleep(500, 1500, TimeUnit.MILLISECONDS);   // 随机休眠0.5秒到1.5秒
             return;
@@ -111,20 +119,36 @@ public class TaskService implements Runnable {
     }
 
 
-    public TaskItem find(String taskId) {
-        return config.getTaskDao().find(taskId, config.getTaskTableName());
+    /**
+     * 根据ID查找任务。
+     *
+     * @param taskId 任务ID
+     * @return 找到的任务
+     */
+    public Optional<TaskItem> find(String taskId) {
+        return Optional.ofNullable(config.getTaskDao().find(taskId, config.getTaskTableName()));
     }
 
+    /**
+     * 运行任务。
+     *
+     * @param taskId 任务ID
+     */
     public void fire(String taskId) {
         val task = find(taskId);
-        if (task == null) {
+        if (!task.isPresent()) {
             log.warn("找不到任务{} ", taskId);
             return;
         }
 
-        fire(task);
+        fire(task.get());
     }
 
+    /**
+     * 运行任务。
+     *
+     * @param task 任务
+     */
     public void fire(TaskItem task) {
         task.setStartTime(DateTime.now());
         int changed = config.getTaskDao().start(task, config.getTaskTableName());
@@ -135,12 +159,13 @@ public class TaskService implements Runnable {
 
         try {
             val taskable = config.getTaskableFactory().getTaskable(task.getTaskService());
-            if (Util.timeoutRun(() -> taskable.run(task), task.getTimeout())) {
+            val pair = Util.timeoutRun(() -> taskable.run(task), task.getTimeout());
+            if (pair._2) {
                 log.warn("执行任务超时🌶{}", task);
                 endTask(task, TaskItem.已超时, "任务超时");
             } else {
                 log.info("执行任务成功👌{}", task);
-                endTask(task, TaskItem.已完成, "执行成功");
+                endTask(task, TaskItem.已完成, pair._1);
             }
         } catch (Exception ex) {
             log.warn("执行任务异常😂{}", task, ex);

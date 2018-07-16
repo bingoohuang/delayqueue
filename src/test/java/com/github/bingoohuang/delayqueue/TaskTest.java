@@ -23,7 +23,7 @@ import static com.google.common.truth.Truth.assertThat;
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(classes = {SpringConfig.class})
 public class TaskTest {
-    @Autowired TaskService taskService;
+    @Autowired TaskRunner taskRunner;
     @Autowired Jedis jedis;
     @Autowired TaskConfig taskConfig;
     @Autowired TaskDao taskDao;
@@ -37,41 +37,44 @@ public class TaskTest {
 
     @Test
     public void submit() {
-        taskService.initialize();
+        taskRunner.initialize();
 
+        val attachment = AttachmentVo.builder().name("黄进兵").age(110).build();
         val vo = TaskItemVo.builder()
                 .taskId("110").taskName("测试任务").taskService("MyTaskable")
                 .relativeId("关联ID")
+                .attachment(attachment)
                 .build();
-        taskService.submit(vo);
+        taskRunner.submit(vo);
 
-        taskService.initialize();
+        taskRunner.initialize();
 
         Set<String> set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
         assertThat(set).containsExactly("110");
 
-        taskService.fire();
+        taskRunner.fire();
         set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
         assertThat(set).isEmpty();
 
         TaskItem item = taskDao.find("110", taskConfig.getTaskTableName());
         assertThat(item.getTaskId()).isEqualTo("110");
         assertThat(item.getState()).isEqualTo(TaskItem.已完成);
+        assertThat(item.getAttachment(AttachmentVo.class)).isEqualTo(attachment);
 
-        taskService.fire(item);
-        taskService.fire(item.getTaskId());
-        taskService.fire("not exists");
+        taskRunner.fire(item);
+        taskRunner.fire(item.getTaskId());
+        taskRunner.fire("not exists");
     }
 
     @Test
     public void cancel() {
         val vo = TaskItemVo.builder().taskId("120").taskName("测试任务").taskService("MyTaskable").build();
-        taskService.submit(vo);
+        taskRunner.submit(vo);
 
         Set<String> set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
         assertThat(set).containsExactly("120");
 
-        taskService.cancel("手工取消", "120");
+        taskRunner.cancel("手工取消", "120");
 
         set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
         assertThat(set).isEmpty();
@@ -84,16 +87,16 @@ public class TaskTest {
     public void submitMulti() {
         val vo1 = TaskItemVo.builder().taskId("210").taskName("测试任务").taskService("MyTaskable").build();
         val vo2 = TaskItemVo.builder().taskId("220").taskName("测试任务").taskService("MyTaskable").build();
-        taskService.submit(Lists.newArrayList(vo1, vo2));
+        taskRunner.submit(Lists.newArrayList(vo1, vo2));
 
         Set<String> set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
         assertThat(set).containsExactly("210", "220");
 
-        taskService.fire();
+        taskRunner.fire();
         set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
         assertThat(set).hasSize(1);
 
-        taskService.fire();
+        taskRunner.fire();
         set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
         assertThat(set).hasSize(0);
 
@@ -107,8 +110,8 @@ public class TaskTest {
     @Test
     public void timeout() {
         val vo = TaskItemVo.builder().taskId("310").taskName("测试任务").taskService("MyTimeoutTaskable").timeout(1).build();
-        taskService.submit(vo);
-        taskService.fire();
+        taskRunner.submit(vo);
+        taskRunner.fire();
 
         TaskItem item = taskDao.find("310", taskConfig.getTaskTableName());
         assertThat(item.getState()).isEqualTo(TaskItem.已超时);
@@ -117,8 +120,8 @@ public class TaskTest {
     @Test
     public void timeout2() {
         val vo = TaskItemVo.builder().taskId("320").taskName("测试任务").taskService("MyTimeoutTaskable").timeout(2).build();
-        taskService.submit(vo);
-        taskService.fire();
+        taskRunner.submit(vo);
+        taskRunner.fire();
 
         TaskItem item = taskDao.find("320", taskConfig.getTaskTableName());
         assertThat(item.getState()).isEqualTo(TaskItem.已完成);
@@ -127,8 +130,8 @@ public class TaskTest {
     @Test
     public void timeout3() {
         val vo = TaskItemVo.builder().taskId("330").taskName("测试任务").taskService("MyExTaskable").timeout(2).build();
-        taskService.submit(vo);
-        taskService.fire();
+        taskRunner.submit(vo);
+        taskRunner.fire();
 
         TaskItem item = taskDao.find("330", taskConfig.getTaskTableName());
         assertThat(item.getState()).isEqualTo(TaskItem.已失败);
@@ -137,33 +140,33 @@ public class TaskTest {
 
     @Test(expected = RuntimeException.class)
     public void taskNameRequired() {
-        taskService.submit(TaskItemVo.builder().taskService("MyTaskable").build());
+        taskRunner.submit(TaskItemVo.builder().taskService("MyTaskable").build());
     }
 
     @Test(expected = RuntimeException.class)
     public void taskServiceRequired() {
-        taskService.submit(TaskItemVo.builder().taskName("MyTaskable").build());
+        taskRunner.submit(TaskItemVo.builder().taskName("MyTaskable").build());
     }
 
 
     @Test
     public void delay() {
         jedis.del(taskConfig.getQueueKey());
-        taskService.fire();
+        taskRunner.fire();
 
         val vo = TaskItemVo.builder()
                 .taskId("410").taskName("测试任务").taskService("MyTaskable")
-                .readyTime(DateTime.now().plusMillis(1500))
+                .runAt(DateTime.now().plusMillis(1500))
                 .build();
-        taskService.submit(vo);
-        taskService.fire();
+        taskRunner.submit(vo);
+        taskRunner.fire();
 
         Set<String> set = jedis.zrangeByScore(taskConfig.getQueueKey(), 0, System.currentTimeMillis());
         assertThat(set).isEmpty();
 
         Util.randomSleep(1500, 1600, TimeUnit.MILLISECONDS);
 
-        taskService.fire();
+        taskRunner.fire();
         set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
         assertThat(set).isEmpty();
 
@@ -176,9 +179,9 @@ public class TaskTest {
         val vo = TaskItemVo.builder()
                 .taskId("510").taskName("测试任务").taskService("MyExTaskable")
                 .build();
-        taskService.submit(vo);
+        taskRunner.submit(vo);
 
-        taskService.fire();
+        taskRunner.fire();
 
         TaskItem item = taskDao.find("510", taskConfig.getTaskTableName());
         assertThat(item.getState()).isEqualTo(TaskItem.已失败);
@@ -188,8 +191,8 @@ public class TaskTest {
 
     @Test
     public void run() {
-        Executors.newSingleThreadExecutor().submit(taskService);
+        Executors.newSingleThreadExecutor().submit(taskRunner);
         Util.randomSleep(100, 200, TimeUnit.MILLISECONDS);
-        taskService.stop();
+        taskRunner.stop();
     }
 }

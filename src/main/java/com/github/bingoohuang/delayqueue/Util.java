@@ -4,6 +4,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.joda.time.DateTime;
+import org.n3r.eql.util.Pair;
 
 import java.util.concurrent.*;
 
@@ -22,21 +23,18 @@ public class Util {
     }
 
     @SneakyThrows
-    public static boolean timeoutRun(Runnable runnable, int timeout) {
-        if (timeout <= 0 ) {
-            runnable.run();
-            return false;
+    public static Pair<String, Boolean> timeoutRun(Callable<String> runnable, int timeout) {
+        if (timeout <= 0) {
+            return Pair.of(runnable.call(), false);
         }
 
         val executorService = Executors.newSingleThreadExecutor();
-
         val future = executorService.submit(runnable);
         try {
-            future.get(timeout, TimeUnit.SECONDS);
-            return false;
+            return Pair.of(future.get(timeout, TimeUnit.SECONDS), false);
         } catch (TimeoutException e) {
             log.warn("任务超时了，超时{}秒", timeout);
-            return true;
+            return Pair.of(null, true);
         } catch (InterruptedException | ExecutionException e) {
             throw e.getCause();
         }

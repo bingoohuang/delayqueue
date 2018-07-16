@@ -1,9 +1,9 @@
 package com.github.bingoohuang.delayqueue;
 
-import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisCommands;
 
 public interface TaskConfig {
-    Jedis getJedis();
+    JedisCommands getJedis();
 
     String getQueueKey();
 

@@ -6,3 +6,54 @@
 [![License](http://img.shields.io/:license-apache-brightgreen.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
 
 delay queue based on redis. 
+
+# Task Table DDL
+
+For H2:
+
+```sql
+DROP TABLE IF EXISTS t_delay_task;
+CREATE TABLE t_delay_task (
+ TASK_ID varchar(20) NOT NULL COMMENT '任务ID',
+ RELATIVE_ID varchar(20) NULL COMMENT '关联ID,比如订单ID\会员卡ID\排期ID等',
+ TASK_NAME varchar(100) NOT NULL COMMENT '任务名称',
+ TASK_SERVICE varchar(100) NOT NULL COMMENT '任务服务名称，需要实现Taskable接口',
+ STATE varchar(3) NOT NULL COMMENT '待运行/运行中/已成功/已失败/已取消',
+ RUN_AT datetime NOT NULL COMMENT '何时运行，此参数可以设置延时',
+ TIMEOUT tinyint NOT NULL DEFAULT 0 COMMENT '超时时间（秒）',
+ START_TIME datetime NULL COMMENT '开始运行时间',
+ END_TIME datetime NULL COMMENT '结束运行时间',
+ RESULT varchar(300) NULL COMMENT '任务运行结果',
+ ATTACHMENT   TEXT  NULL COMMENT '附件',
+ CREATE_TIME datetime NOT NULL  COMMENT '创建时间',
+ PRIMARY KEY (TASK_ID)
+)  COMMENT = '任务表';
+
+```
+
+For MySQL:
+```sql
+DROP TABLE IF EXISTS t_delay_task;
+CREATE TABLE t_delay_task (
+ TASK_ID varchar(20) NOT NULL COMMENT '任务ID',
+ RELATIVE_ID varchar(20) NULL COMMENT '关联ID,比如订单ID\会员卡ID\排期ID等',
+ TASK_NAME varchar(100) NOT NULL COMMENT '任务名称',
+ TASK_SERVICE varchar(100) NOT NULL COMMENT '任务服务名称，需要实现Taskable接口',
+ STATE varchar(3) NOT NULL COMMENT '待运行/运行中/已成功/已失败/已取消/已超时',
+ RUN_AT datetime NOT NULL COMMENT '何时运行，此参数可以设置延时',
+ TIMEOUT tinyint NOT NULL DEFAULT 0 COMMENT '超时时间（秒）',
+ START_TIME datetime NULL COMMENT '开始运行时间',
+ END_TIME datetime NULL COMMENT '结束运行时间',
+ RESULT varchar(300) NULL COMMENT '任务运行结果',
+ ATTACHMENT   TEXT  NULL COMMENT '附件',
+ CREATE_TIME datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+ PRIMARY KEY (TASK_ID)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '任务表';
+```
+
+# Redis Sorted Set
+
+[Redis Sorted Sets](https://redis.io/topics/data-types) are, similarly to Redis Sets, non repeating collections of Strings. The difference is that every member of a Sorted Set is associated with score, that is used in order to take the sorted set ordered, from the smallest to the greatest score. While members are unique, scores may be repeated.
+
+We put the task id to the sorted set with its runAt millis as score, [like](https://redis.io/commands/zadd) `ZADD key {runAtInMillis} {taskId} `, then the fire method will check 
+the sorted set by score range, [like](https://redis.io/commands/zrangebyscore) `ZRANGEBYSCORE key 0 {currentMillis} 0 1` to try poll the first executable taskId.

@@ -47,7 +47,7 @@ public class SpringConfig {
         return EqlerFactory.getEqler(TaskDao.class);
     }
 
-    @Bean TaskService taskService(@Autowired TaskConfig taskConfig) {
-        return new TaskService(taskConfig);
+    @Bean TaskRunner taskService(@Autowired TaskConfig taskConfig) {
+        return new TaskRunner(taskConfig);
     }
 }
