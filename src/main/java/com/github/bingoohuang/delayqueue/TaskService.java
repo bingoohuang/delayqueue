@@ -94,8 +94,6 @@ public class TaskService implements Runnable {
 
     /**
      * 运行一次任务。此方法需要放在循环中调用，或者每秒触发一次，以保证实时性。
-     *
-     * @return redis触发列表是否为空
      */
     public void fire() {
         val taskIds = config.getJedis().zrangeByScore(config.getQueueKey(), 0, System.currentTimeMillis());
