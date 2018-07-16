@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.joda.time.DateTime;
+import redis.clients.jedis.JedisCommands;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,7 +15,12 @@ import static java.util.stream.Collectors.toMap;
 
 @Slf4j
 public class TaskRunner implements Runnable {
-    private final TaskConfig config;
+    private final TaskDao taskDao;
+    private final String taskTableName;
+    private final JedisCommands jedis;
+    private final String queueKey;
+    private final TaskableFactory taskableFactory;
+
     private volatile boolean stop = false;
 
     /**
@@ -23,7 +29,11 @@ public class TaskRunner implements Runnable {
      * @param config 配置
      */
     public TaskRunner(TaskConfig config) {
-        this.config = config;
+        this.taskDao = config.getTaskDao();
+        this.taskTableName = config.getTaskTableName();
+        this.jedis = config.getJedis();
+        this.queueKey = config.getQueueKey();
+        this.taskableFactory = config.getTaskableFactory();
     }
 
     /**
@@ -32,8 +42,8 @@ public class TaskRunner implements Runnable {
      * @param task 任务对象
      */
     public void submit(TaskItemVo task) {
-        config.getTaskDao().add(task.createTaskItem(), config.getTaskTableName());
-        config.getJedis().zadd(config.getQueueKey(), task.getRunAt().getMillis(), task.getTaskId());
+        taskDao.add(task.createTaskItem(), taskTableName);
+        jedis.zadd(queueKey, task.getRunAt().getMillis(), task.getTaskId());
     }
 
     /**
@@ -42,9 +52,9 @@ public class TaskRunner implements Runnable {
      * @param tasks 任务对象列表
      */
     public void submit(List<TaskItemVo> tasks) {
-        config.getTaskDao().add(tasks.stream().map(TaskItemVo::createTaskItem).collect(Collectors.toList()), config.getTaskTableName());
+        taskDao.add(tasks.stream().map(TaskItemVo::createTaskItem).collect(Collectors.toList()), taskTableName);
         val map = tasks.stream().collect(toMap(TaskItemVo::getTaskId, x -> (double) (x.getRunAt().getMillis())));
-        config.getJedis().zadd(config.getQueueKey(), map);
+        jedis.zadd(queueKey, map);
     }
 
     /**
@@ -67,19 +77,19 @@ public class TaskRunner implements Runnable {
      */
     public int cancel(String reason, List<String> taskIds) {
         val taskIdArr = taskIds.toArray(new String[0]);
-        config.getJedis().zrem(config.getQueueKey(), taskIdArr);
-        return config.getTaskDao().cancelTasks(config.getTaskTableName(), reason, taskIdArr);
+        jedis.zrem(queueKey, taskIdArr);
+        return taskDao.cancelTasks(taskTableName, reason, taskIdArr);
     }
 
     /**
      * 刚启动时，查询所有可以执行的任务，添加到执行列表中。
      */
     public void initialize() {
-        val tasks = config.getTaskDao().listReady(config.getTaskTableName());
+        val tasks = taskDao.listReady(taskTableName);
         if (tasks.isEmpty()) return;
 
         val map = tasks.stream().collect(toMap(TaskItem::getTaskId, x -> (double) (x.getRunAt().getMillis())));
-        config.getJedis().zadd(config.getQueueKey(), map);
+        jedis.zadd(queueKey, map);
     }
 
     /**
@@ -90,7 +100,9 @@ public class TaskRunner implements Runnable {
         stop = false;
 
         while (!stop) {
-            fire();
+            if (!fire()) {
+                Util.randomSleep(500, 1500, TimeUnit.MILLISECONDS);   // 随机休眠0.5秒到1.5秒
+            }
         }
     }
 
@@ -103,19 +115,21 @@ public class TaskRunner implements Runnable {
 
     /**
      * 运行一次任务。此方法需要放在循环中调用，或者每秒触发一次，以保证实时性。
+     *
+     * @return true 成功从队列中抢到一个任务。
      */
-    public void fire() {
-        val taskIds = config.getJedis().zrangeByScore(config.getQueueKey(), 0, System.currentTimeMillis(), 0, 1);
+    public boolean fire() {
+        val taskIds = jedis.zrangeByScore(queueKey, 0, System.currentTimeMillis(), 0, 1);
         if (taskIds.isEmpty()) {
-            Util.randomSleep(500, 1500, TimeUnit.MILLISECONDS);   // 随机休眠0.5秒到1.5秒
-            return;
+            return false;
         }
 
         val taskId = taskIds.iterator().next();
-        val zrem = config.getJedis().zrem(config.getQueueKey(), taskId);
-        if (zrem < 1) return; // 该任务已经被其它人抢走了
+        val zrem = jedis.zrem(queueKey, taskId);
+        if (zrem < 1) return false; // 该任务已经被其它人抢走了
 
         fire(taskId);
+        return true;
     }
 
 
@@ -126,7 +140,7 @@ public class TaskRunner implements Runnable {
      * @return 找到的任务
      */
     public Optional<TaskItem> find(String taskId) {
-        return Optional.ofNullable(config.getTaskDao().find(taskId, config.getTaskTableName()));
+        return Optional.ofNullable(taskDao.find(taskId, taskTableName));
     }
 
     /**
@@ -151,14 +165,14 @@ public class TaskRunner implements Runnable {
      */
     public void fire(TaskItem task) {
         task.setStartTime(DateTime.now());
-        int changed = config.getTaskDao().start(task, config.getTaskTableName());
+        int changed = taskDao.start(task, taskTableName);
         if (changed == 0) {
-            log.debug("任务 {} {} 状态不是待运行", task.getTaskId(), task.getTaskName());
+            log.debug("任务状态不是待运行{}", task);
             return;
         }
 
         try {
-            val taskable = config.getTaskableFactory().getTaskable(task.getTaskService());
+            val taskable = taskableFactory.getTaskable(task.getTaskService());
             val pair = Util.timeoutRun(() -> taskable.run(task), task.getTimeout());
             if (pair._2) {
                 log.warn("执行任务超时🌶{}", task);
@@ -177,7 +191,7 @@ public class TaskRunner implements Runnable {
         task.setState(finalState);
         task.setResult(result);
         task.setEndTime(DateTime.now());
-        config.getTaskDao().end(task, config.getTaskTableName());
+        taskDao.end(task, taskTableName);
     }
 }
 
