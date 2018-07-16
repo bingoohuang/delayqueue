@@ -45,12 +45,12 @@ public class TaskTest {
                 .relativeId("关联ID")
                 .attachment(attachment)
                 .build();
-        taskRunner.submit(vo);
+        val task = taskRunner.submit(vo);
 
         taskRunner.initialize();
 
         Set<String> set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
-        assertThat(set).containsExactly("110");
+        assertThat(set).contains(task.getTaskId());
 
         taskRunner.fire();
         set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
@@ -80,6 +80,23 @@ public class TaskTest {
         assertThat(set).isEmpty();
         TaskItem item = taskDao.find("120", taskConfig.getTaskTableName());
         assertThat(item.getState()).isEqualTo(TaskItem.已取消);
+    }
+
+    @Test
+    public void cancelByRelativeId() {
+        val vo = TaskItemVo.builder().relativeId("120").taskName("测试任务").taskService("MyTaskable").build();
+        val task = taskRunner.submit(vo);
+
+        Set<String> set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
+        assertThat(set).contains(task.getTaskId());
+
+        taskRunner.cancelByRelativeId("手工取消", "120");
+
+        set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
+        assertThat(set).isEmpty();
+        val items = taskDao.queryTaskIdsByRelativeIds(Lists.newArrayList("120"), taskConfig.getTaskTableName());
+        assertThat(items).hasSize(1);
+        assertThat(items.get(0).getState()).isEqualTo(TaskItem.已取消);
     }
 
 

@@ -39,22 +39,39 @@ public class TaskRunner implements Runnable {
     /**
      * 提交一个异步任务。
      *
-     * @param task 任务对象
+     * @param taskVo 任务对象
+     * @return 任务对象
      */
-    public void submit(TaskItemVo task) {
-        taskDao.add(task.createTaskItem(), taskTableName);
-        jedis.zadd(queueKey, task.getRunAt().getMillis(), task.getTaskId());
+    public TaskItem submit(TaskItemVo taskVo) {
+        val task = taskVo.createTaskItem();
+        taskDao.add(task, taskTableName);
+        jedis.zadd(queueKey, taskVo.getRunAt().getMillis(), task.getTaskId());
+        return task;
     }
 
     /**
      * 提交异步任务列表。
      *
-     * @param tasks 任务对象列表
+     * @param taskVos 任务对象列表
+     * @return 任务列表
      */
-    public void submit(List<TaskItemVo> tasks) {
-        taskDao.add(tasks.stream().map(TaskItemVo::createTaskItem).collect(Collectors.toList()), taskTableName);
-        val map = tasks.stream().collect(toMap(TaskItemVo::getTaskId, x -> (double) (x.getRunAt().getMillis())));
+    public List<TaskItem> submit(List<TaskItemVo> taskVos) {
+        val tasks = taskVos.stream().map(TaskItemVo::createTaskItem).collect(Collectors.toList());
+        taskDao.add(tasks, taskTableName);
+        val map = tasks.stream().collect(toMap(TaskItem::getTaskId, x -> (double) (x.getRunAt().getMillis())));
         jedis.zadd(queueKey, map);
+        return tasks;
+    }
+
+    /**
+     * 取消一个异步任务.
+     *
+     * @param reason     取消原因
+     * @param relativeId 关联ID
+     * @return int 成功取消数量
+     */
+    public int cancelByRelativeId(String reason, String relativeId) {
+        return cancelByRelativeId(reason, Lists.newArrayList(relativeId));
     }
 
     /**
@@ -71,14 +88,27 @@ public class TaskRunner implements Runnable {
     /**
      * 取消一个或多个异步任务.
      *
+     * @param reason      取消原因
+     * @param relativeIds 关联ID列表
+     * @return int 成功取消数量
+     */
+    public int cancelByRelativeId(String reason, List<String> relativeIds) {
+        val tasks = taskDao.queryTaskIdsByRelativeIds(relativeIds, taskTableName);
+        val taskIds = tasks.stream().map(x -> x.getTaskId()).collect(Collectors.toList());
+        jedis.zrem(queueKey, taskIds.toArray(new String[0]));
+        return taskDao.cancelTasks(reason, taskIds, taskTableName);
+    }
+
+    /**
+     * 取消一个或多个异步任务.
+     *
      * @param reason  取消原因
      * @param taskIds 任务ID列表
      * @return int 成功取消数量
      */
     public int cancel(String reason, List<String> taskIds) {
-        val taskIdArr = taskIds.toArray(new String[0]);
-        jedis.zrem(queueKey, taskIdArr);
-        return taskDao.cancelTasks(taskTableName, reason, taskIdArr);
+        jedis.zrem(queueKey, taskIds.toArray(new String[0]));
+        return taskDao.cancelTasks(reason, taskIds, taskTableName);
     }
 
     /**

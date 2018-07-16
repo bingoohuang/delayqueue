@@ -14,3 +14,4 @@ CREATE TABLE t_delay_task (
  CREATE_TIME datetime NOT NULL  COMMENT '创建时间',
  PRIMARY KEY (TASK_ID)
 )  COMMENT = '任务表';
+CREATE INDEX IDX_T_DELAY_TASK ON t_delay_task(RELATIVE_ID);

@@ -6,7 +6,7 @@
 
     <groupId>com.github.bingoohuang</groupId>
     <artifactId>delayqueue</artifactId>
-    <version>0.0.2-SNAPSHOT</version>
+    <version>0.0.3-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>delayqueue</name>
@@ -100,12 +100,6 @@
             <groupId>org.springframework</groupId>
             <artifactId>spring-test</artifactId>
             <version>5.0.7.RELEASE</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.google.truth</groupId>
-            <artifactId>truth</artifactId>
-            <version>0.42</version>
             <scope>test</scope>
         </dependency>
         <dependency>

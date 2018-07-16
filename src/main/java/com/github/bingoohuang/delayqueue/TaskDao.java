@@ -38,5 +38,9 @@ public interface TaskDao {
 
 
     @Sql("update $$ set STATE = '已取消', END_TIME = NOW(), RESULT = #_1# where TASK_ID in (/* in _2 */) and STATE = '待运行'")
-    int cancelTasks(@Dynamic String taskTableName, String reason, String... taskIds);
+    int cancelTasks(String reason, List<String> taskIds, @Dynamic String taskTableName);
+
+    @Sql("select TASK_ID, RELATIVE_ID, TASK_NAME, TASK_SERVICE, STATE, RUN_AT, TIMEOUT, START_TIME, END_TIME, RESULT, ATTACHMENT, CREATE_TIME " +
+            "from $$ where RELATIVE_ID in (/* in _1 */)")
+    List<TaskItem> queryTaskIdsByRelativeIds(List<String> relativeIds, @Dynamic String taskTableName);
 }
