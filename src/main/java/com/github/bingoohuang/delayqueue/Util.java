@@ -13,20 +13,26 @@ public class Util {
 
     private final static ThreadLocalRandom random = ThreadLocalRandom.current();
 
-    public static void randomSleep(int min, int max, TimeUnit timeUnit) {
+    /**
+     * Sleep in random time between min and max.
+     *
+     * @param min      minimum time
+     * @param max      maximum time
+     * @param timeUnit time unit
+     * @return true if interrupted
+     */
+    public static boolean randomSleep(int min, int max, TimeUnit timeUnit) {
         try {
-            int timeout = random.nextInt(max - min) + min;
-            timeUnit.sleep(timeout);
+            timeUnit.sleep(random.nextInt(max - min) + min);
+            return false;
         } catch (InterruptedException e) {
-            // ignore
+            return true;
         }
     }
 
     @SneakyThrows
     public static Pair<String, Boolean> timeoutRun(Callable<String> runnable, int timeout) {
-        if (timeout <= 0) {
-            return Pair.of(runnable.call(), false);
-        }
+        if (timeout <= 0) return Pair.of(runnable.call(), false);
 
         val executorService = Executors.newSingleThreadExecutor();
         val future = executorService.submit(runnable);

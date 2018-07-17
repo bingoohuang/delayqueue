@@ -83,6 +83,12 @@ public class TaskTest {
     }
 
     @Test
+    public void cancelByNonExistingRelativeId() {
+        int total = taskRunner.cancelByRelativeId("手工取消", "xxx");
+        assertThat(total).isEqualTo(0);
+    }
+
+    @Test
     public void cancelByRelativeId() {
         val vo = TaskItemVo.builder().relativeId("120").taskName("测试任务").taskService("MyTaskable").build();
         val task = taskRunner.submit(vo);
@@ -173,7 +179,7 @@ public class TaskTest {
 
         val vo = TaskItemVo.builder()
                 .taskId("410").taskName("测试任务").taskService("MyTaskable")
-                .runAt(DateTime.now().plusMillis(1500))
+                .runAt(DateTime.now().plusMillis(1000))
                 .build();
         taskRunner.submit(vo);
         taskRunner.fire();
@@ -181,11 +187,9 @@ public class TaskTest {
         Set<String> set = jedis.zrangeByScore(taskConfig.getQueueKey(), 0, System.currentTimeMillis());
         assertThat(set).isEmpty();
 
-        Util.randomSleep(1500, 1600, TimeUnit.MILLISECONDS);
+        Util.randomSleep(1500, 1800, TimeUnit.MILLISECONDS);
 
         taskRunner.fire();
-        set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
-        assertThat(set).isEmpty();
 
         TaskItem item = taskDao.find("410", taskConfig.getTaskTableName());
         assertThat(item.getState()).isEqualTo(TaskItem.已完成);
@@ -210,6 +214,8 @@ public class TaskTest {
     public void run() {
         Executors.newSingleThreadExecutor().submit(taskRunner);
         Util.randomSleep(100, 200, TimeUnit.MILLISECONDS);
-        taskRunner.stop();
+        taskRunner.setLoopStopped(true);
+
+        assertThat(taskRunner.isLoopStopped()).isTrue();
     }
 }

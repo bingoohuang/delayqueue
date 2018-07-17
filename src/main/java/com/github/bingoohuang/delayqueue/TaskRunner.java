@@ -1,6 +1,8 @@
 package com.github.bingoohuang.delayqueue;
 
 import com.google.common.collect.Lists;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.joda.time.DateTime;
@@ -21,7 +23,7 @@ public class TaskRunner implements Runnable {
     private final String queueKey;
     private final TaskableFactory taskableFactory;
 
-    private volatile boolean stop = false;
+    @Getter @Setter private volatile boolean loopStopped = false;
 
     /**
      * 任务运行构造器。
@@ -94,6 +96,8 @@ public class TaskRunner implements Runnable {
      */
     public int cancelByRelativeId(String reason, List<String> relativeIds) {
         val tasks = taskDao.queryTaskIdsByRelativeIds(relativeIds, taskTableName);
+        if (tasks.isEmpty()) return 0;
+
         val taskIds = tasks.stream().map(x -> x.getTaskId()).collect(Collectors.toList());
         jedis.zrem(queueKey, taskIds.toArray(new String[0]));
         return taskDao.cancelTasks(reason, taskIds, taskTableName);
@@ -127,20 +131,14 @@ public class TaskRunner implements Runnable {
      */
     @Override
     public void run() {
-        stop = false;
+        loopStopped = false;
 
-        while (!stop) {
-            if (!fire()) {
-                Util.randomSleep(500, 1500, TimeUnit.MILLISECONDS);   // 随机休眠0.5秒到1.5秒
-            }
+        while (!loopStopped) {
+            if (fire()) continue;
+
+            // 随机休眠0.5秒到1.5秒
+            if (Util.randomSleep(500, 1500, TimeUnit.MILLISECONDS)) break;
         }
-    }
-
-    /**
-     * 停止循环运行。
-     */
-    public void stop() {
-        stop = true;
     }
 
     /**
@@ -156,7 +154,9 @@ public class TaskRunner implements Runnable {
 
         val taskId = taskIds.iterator().next();
         val zrem = jedis.zrem(queueKey, taskId);
-        if (zrem < 1) return false; // 该任务已经被其它人抢走了
+        if (zrem < 1) {
+            return false; // 该任务已经被其它人抢走了
+        }
 
         fire(taskId);
         return true;
@@ -223,6 +223,7 @@ public class TaskRunner implements Runnable {
         task.setEndTime(DateTime.now());
         taskDao.end(task, taskTableName);
     }
+
 }
 
 
