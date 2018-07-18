@@ -10,7 +10,6 @@ import java.util.concurrent.*;
 
 @Slf4j
 public class Util {
-
     private final static ThreadLocalRandom random = ThreadLocalRandom.current();
 
     /**

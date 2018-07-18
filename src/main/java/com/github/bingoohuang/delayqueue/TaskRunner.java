@@ -68,17 +68,6 @@ public class TaskRunner implements Runnable {
     /**
      * 取消一个异步任务.
      *
-     * @param reason     取消原因
-     * @param relativeId 关联ID
-     * @return int 成功取消数量
-     */
-    public int cancelByRelativeId(String reason, String relativeId) {
-        return cancelByRelativeId(reason, Lists.newArrayList(relativeId));
-    }
-
-    /**
-     * 取消一个异步任务.
-     *
      * @param reason 取消原因
      * @param taskId 任务ID
      * @return int 成功取消数量
@@ -90,17 +79,17 @@ public class TaskRunner implements Runnable {
     /**
      * 取消一个或多个异步任务.
      *
+     * @param classifier  任务分类名称
      * @param reason      取消原因
      * @param relativeIds 关联ID列表
      * @return int 成功取消数量
      */
-    public int cancelByRelativeId(String reason, List<String> relativeIds) {
-        val tasks = taskDao.queryTaskIdsByRelativeIds(relativeIds, taskTableName);
+    public int cancelByRelativeIds(String classifier, String reason, String... relativeIds) {
+        List<String> relativeIdList = Lists.newArrayList(relativeIds);
+        val tasks = taskDao.queryTaskIdsByRelativeIds(classifier, relativeIdList, taskTableName);
         if (tasks.isEmpty()) return 0;
 
-        val taskIds = tasks.stream().map(x -> x.getTaskId()).collect(Collectors.toList());
-        jedis.zrem(queueKey, taskIds.toArray(new String[0]));
-        return taskDao.cancelTasks(reason, taskIds, taskTableName);
+        return cancel(reason, tasks.stream().map(x -> x.getTaskId()).collect(Collectors.toList()));
     }
 
     /**
@@ -112,14 +101,16 @@ public class TaskRunner implements Runnable {
      */
     public int cancel(String reason, List<String> taskIds) {
         jedis.zrem(queueKey, taskIds.toArray(new String[0]));
-        return taskDao.cancelTasks(reason, taskIds, taskTableName);
+        return taskDao.cancelTasks(reason, taskIds, TaskItem.待运行, TaskItem.已取消, taskTableName);
     }
 
     /**
      * 刚启动时，查询所有可以执行的任务，添加到执行列表中。
+     *
+     * @param classifier 任务分类名称
      */
-    public void initialize() {
-        val tasks = taskDao.listReady(taskTableName);
+    public void initialize(String classifier) {
+        val tasks = taskDao.listReady(TaskItem.待运行, classifier, taskTableName);
         if (tasks.isEmpty()) return;
 
         val map = tasks.stream().collect(toMap(TaskItem::getTaskId, x -> (double) (x.getRunAt().getMillis())));
@@ -148,15 +139,11 @@ public class TaskRunner implements Runnable {
      */
     public boolean fire() {
         val taskIds = jedis.zrangeByScore(queueKey, 0, System.currentTimeMillis(), 0, 1);
-        if (taskIds.isEmpty()) {
-            return false;
-        }
+        if (taskIds.isEmpty()) return false;
 
         val taskId = taskIds.iterator().next();
         val zrem = jedis.zrem(queueKey, taskId);
-        if (zrem < 1) {
-            return false; // 该任务已经被其它人抢走了
-        }
+        if (zrem < 1) return false; // 该任务已经被其它人抢走了
 
         fire(taskId);
         return true;
@@ -180,12 +167,11 @@ public class TaskRunner implements Runnable {
      */
     public void fire(String taskId) {
         val task = find(taskId);
-        if (!task.isPresent()) {
+        if (task.isPresent()) {
+            fire(task.get());
+        } else {
             log.warn("找不到任务{} ", taskId);
-            return;
         }
-
-        fire(task.get());
     }
 
     /**
@@ -195,7 +181,8 @@ public class TaskRunner implements Runnable {
      */
     public void fire(TaskItem task) {
         task.setStartTime(DateTime.now());
-        int changed = taskDao.start(task, taskTableName);
+        task.setState(TaskItem.运行中);
+        int changed = taskDao.start(task, TaskItem.待运行, taskTableName);
         if (changed == 0) {
             log.debug("任务状态不是待运行{}", task);
             return;
@@ -203,7 +190,7 @@ public class TaskRunner implements Runnable {
 
         try {
             val taskable = taskableFactory.getTaskable(task.getTaskService());
-            val pair = Util.timeoutRun(() -> taskable.run(task), task.getTimeout());
+            val pair = Util.timeoutRun(() -> fire(taskable, task), task.getTimeout());
             if (pair._2) {
                 log.warn("执行任务超时🌶{}", task);
                 endTask(task, TaskItem.已超时, "任务超时");
@@ -217,11 +204,23 @@ public class TaskRunner implements Runnable {
         }
     }
 
+    private String fire(Taskable taskable, TaskItem task) {
+        taskable.beforeRun(task);
+        try {
+            return taskable.run(task);
+        } catch (Throwable ex) {
+            taskable.afterRun(task, Optional.of(ex));
+            throw ex;
+        } finally {
+            taskable.afterRun(task, Optional.empty());
+        }
+    }
+
     private void endTask(TaskItem task, String finalState, String result) {
         task.setState(finalState);
         task.setResult(result);
         task.setEndTime(DateTime.now());
-        taskDao.end(task, taskTableName);
+        taskDao.end(task, TaskItem.运行中, taskTableName);
     }
 
 }

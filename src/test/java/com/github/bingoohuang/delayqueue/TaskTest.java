@@ -37,7 +37,7 @@ public class TaskTest {
 
     @Test
     public void submit() {
-        taskRunner.initialize();
+        taskRunner.initialize("default");
 
         val attachment = AttachmentVo.builder().name("黄进兵").age(110).build();
         val vo = TaskItemVo.builder()
@@ -47,7 +47,7 @@ public class TaskTest {
                 .build();
         val task = taskRunner.submit(vo);
 
-        taskRunner.initialize();
+        taskRunner.initialize("default");
 
         Set<String> set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
         assertThat(set).contains(task.getTaskId());
@@ -84,7 +84,7 @@ public class TaskTest {
 
     @Test
     public void cancelByNonExistingRelativeId() {
-        int total = taskRunner.cancelByRelativeId("手工取消", "xxx");
+        int total = taskRunner.cancelByRelativeIds("default", "手工取消", "xxx");
         assertThat(total).isEqualTo(0);
     }
 
@@ -96,11 +96,11 @@ public class TaskTest {
         Set<String> set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
         assertThat(set).contains(task.getTaskId());
 
-        taskRunner.cancelByRelativeId("手工取消", "120");
+        taskRunner.cancelByRelativeIds("default", "手工取消", "120");
 
         set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
         assertThat(set).isEmpty();
-        val items = taskDao.queryTaskIdsByRelativeIds(Lists.newArrayList("120"), taskConfig.getTaskTableName());
+        val items = taskDao.queryTaskIdsByRelativeIds("default", Lists.newArrayList("120"), taskConfig.getTaskTableName());
         assertThat(items).hasSize(1);
         assertThat(items.get(0).getState()).isEqualTo(TaskItem.已取消);
     }
@@ -170,7 +170,6 @@ public class TaskTest {
     public void taskServiceRequired() {
         taskRunner.submit(TaskItemVo.builder().taskName("MyTaskable").build());
     }
-
 
     @Test
     public void delay() {
