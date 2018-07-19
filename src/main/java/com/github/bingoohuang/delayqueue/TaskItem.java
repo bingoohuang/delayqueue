@@ -33,6 +33,10 @@ public class TaskItem {
     public static final String 已取消 = "已取消";
     public static final String 已超时 = "已超时";
 
+    public String getAttachmentAsString() {
+        return getAttachment(String.class);
+    }
+
     public <T> T getAttachment(Class<T> clazz) {
         return JSON.parseObject(attachment, clazz);
     }

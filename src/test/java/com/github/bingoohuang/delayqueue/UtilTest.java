@@ -11,6 +11,7 @@ public class UtilTest {
 
     @Test
     public void randomSleep() {
+        new Util();
         Thread.currentThread().interrupt();
         Util.randomSleep(10, 20, TimeUnit.MILLISECONDS);
     }

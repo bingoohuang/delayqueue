@@ -59,6 +59,7 @@ public class TaskTest {
         TaskItem item = taskDao.find("110", taskConfig.getTaskTableName());
         assertThat(item.getTaskId()).isEqualTo("110");
         assertThat(item.getState()).isEqualTo(TaskItem.已完成);
+        assertThat(item.getAttachmentAsString()).isEqualTo("{\"name\":\"黄进兵\",\"age\":110}");
         assertThat(item.getAttachment(AttachmentVo.class)).isEqualTo(attachment);
 
         taskRunner.fire(item);
