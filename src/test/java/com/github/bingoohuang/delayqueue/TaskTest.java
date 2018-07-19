@@ -3,6 +3,7 @@ package com.github.bingoohuang.delayqueue;
 import com.google.common.collect.Lists;
 import lombok.val;
 import org.joda.time.DateTime;
+import org.joda.time.format.DateTimeFormat;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -39,7 +40,9 @@ public class TaskTest {
     public void submit() {
         taskRunner.initialize("default");
 
-        val attachment = AttachmentVo.builder().name("黄进兵").age(110).build();
+        val attachment = AttachmentVo.builder().name("黄进兵").age(110)
+                .createTime(DateTime.parse("2018-07-19 11:02:17", DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss")))
+                .build();
         val vo = TaskItemVo.builder()
                 .taskId("110").taskName("测试任务").taskService("MyTaskable")
                 .relativeId("关联ID")
@@ -59,7 +62,7 @@ public class TaskTest {
         TaskItem item = taskDao.find("110", taskConfig.getTaskTableName());
         assertThat(item.getTaskId()).isEqualTo("110");
         assertThat(item.getState()).isEqualTo(TaskItem.已完成);
-        assertThat(item.getAttachmentAsString()).isEqualTo("{\"name\":\"黄进兵\",\"age\":110}");
+        assertThat(item.getAttachmentAsString()).isEqualTo("{\"createTime\":\"2018-07-19 11:02:17.000\",\"name\":\"黄进兵\",\"age\":110}");
         assertThat(item.getAttachment(AttachmentVo.class)).isEqualTo(attachment);
 
         taskRunner.fire(item);
