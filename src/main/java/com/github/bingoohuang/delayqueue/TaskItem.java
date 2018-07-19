@@ -1,6 +1,6 @@
 package com.github.bingoohuang.delayqueue;
 
-import com.alibaba.fastjson.JSON;
+import com.github.bingoohuang.westcache.utils.FastJsons;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -38,6 +38,6 @@ public class TaskItem {
     }
 
     public <T> T getAttachment(Class<T> clazz) {
-        return JSON.parseObject(attachment, clazz);
+        return FastJsons.parse(attachment, clazz);
     }
 }

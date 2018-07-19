@@ -1,6 +1,6 @@
 package com.github.bingoohuang.delayqueue;
 
-import com.alibaba.fastjson.JSON;
+import com.github.bingoohuang.westcache.utils.FastJsons;
 import com.github.bingoohuang.westid.WestId;
 import lombok.Builder;
 import lombok.Value;
@@ -31,7 +31,7 @@ public class TaskItemVo {
                 .state(TaskItem.待运行)
                 .runAt(getRunAt())
                 .timeout(getTimeout())
-                .attachment(JSON.toJSONString(getAttachment()))
+                .attachment(FastJsons.json(getAttachment()))
                 .var1(getVar1())
                 .var2(getVar2())
                 .var3(getVar3())
