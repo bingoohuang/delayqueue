@@ -33,7 +33,6 @@ public class TaskTest {
     public static void beforeClass() {
         String sql = C.classResourceToString("h2-createTable.sql");
         new Eql().execute(sql);
-
     }
 
     @Test
@@ -44,7 +43,7 @@ public class TaskTest {
                 .createTime(DateTime.parse("2018-07-19 11:02:17", DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss")))
                 .build();
         val vo = TaskItemVo.builder()
-                .taskId("110").taskName("测试任务").taskService("MyTaskable")
+                .taskId("110").taskName("测试任务").taskService(MyTaskable.class.getSimpleName())
                 .relativeId("关联ID")
                 .attachment(attachment)
                 .build();
@@ -72,7 +71,7 @@ public class TaskTest {
 
     @Test
     public void cancel() {
-        val vo = TaskItemVo.builder().taskId("120").taskName("测试任务").taskService("MyTaskable").build();
+        val vo = TaskItemVo.builder().taskId("120").taskName("测试任务").taskService(MyTaskable.class.getSimpleName()).build();
         taskRunner.submit(vo);
 
         Set<String> set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
@@ -94,7 +93,7 @@ public class TaskTest {
 
     @Test
     public void cancelByRelativeId() {
-        val vo = TaskItemVo.builder().relativeId("120").taskName("测试任务").taskService("MyTaskable").build();
+        val vo = TaskItemVo.builder().relativeId("120").taskName("测试任务").taskService(MyTaskable.class.getSimpleName()).build();
         val task = taskRunner.submit(vo);
 
         Set<String> set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
@@ -112,8 +111,8 @@ public class TaskTest {
 
     @Test
     public void submitMulti() {
-        val vo1 = TaskItemVo.builder().taskId("210").taskName("测试任务").taskService("MyTaskable").build();
-        val vo2 = TaskItemVo.builder().taskId("220").taskName("测试任务").taskService("MyTaskable").build();
+        val vo1 = TaskItemVo.builder().taskId("210").taskName("测试任务").taskService(MyTaskable.class.getSimpleName()).build();
+        val vo2 = TaskItemVo.builder().taskId("220").taskName("测试任务").taskService(MyTaskable.class.getSimpleName()).build();
         taskRunner.submit(Lists.newArrayList(vo1, vo2));
 
         Set<String> set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
@@ -136,7 +135,7 @@ public class TaskTest {
 
     @Test
     public void timeout() {
-        val vo = TaskItemVo.builder().taskId("310").taskName("测试任务").taskService("MyTimeoutTaskable").timeout(1).build();
+        val vo = TaskItemVo.builder().taskId("310").taskName("测试任务").taskService(MyTimeoutTaskable.class.getSimpleName()).timeout(1).build();
         taskRunner.submit(vo);
         taskRunner.fire();
 
@@ -146,7 +145,7 @@ public class TaskTest {
 
     @Test
     public void timeout2() {
-        val vo = TaskItemVo.builder().taskId("320").taskName("测试任务").taskService("MyTimeoutTaskable").timeout(2).build();
+        val vo = TaskItemVo.builder().taskId("320").taskName("测试任务").taskService(MyTimeoutTaskable.class.getSimpleName()).timeout(2).build();
         taskRunner.submit(vo);
         taskRunner.fire();
 
@@ -156,7 +155,7 @@ public class TaskTest {
 
     @Test
     public void timeout3() {
-        val vo = TaskItemVo.builder().taskId("330").taskName("测试任务").taskService("MyExTaskable").timeout(2).build();
+        val vo = TaskItemVo.builder().taskId("330").taskName("测试任务").taskService(MyExTaskable.class.getSimpleName()).timeout(2).build();
         taskRunner.submit(vo);
         taskRunner.fire();
 
@@ -167,12 +166,12 @@ public class TaskTest {
 
     @Test(expected = RuntimeException.class)
     public void taskNameRequired() {
-        taskRunner.submit(TaskItemVo.builder().taskService("MyTaskable").build());
+        taskRunner.submit(TaskItemVo.builder().taskService(MyTaskable.class.getSimpleName()).build());
     }
 
     @Test(expected = RuntimeException.class)
     public void taskServiceRequired() {
-        taskRunner.submit(TaskItemVo.builder().taskName("MyTaskable").build());
+        taskRunner.submit(TaskItemVo.builder().taskName(MyTaskable.class.getSimpleName()).build());
     }
 
     @Test
@@ -181,7 +180,7 @@ public class TaskTest {
         taskRunner.fire();
 
         val vo = TaskItemVo.builder()
-                .taskId("410").taskName("测试任务").taskService("MyTaskable")
+                .taskId("410").taskName("测试任务").taskService(MyTaskable.class.getSimpleName())
                 .runAt(DateTime.now().plusMillis(1000))
                 .build();
         taskRunner.submit(vo);
@@ -201,7 +200,7 @@ public class TaskTest {
     @Test
     public void taskException() {
         val vo = TaskItemVo.builder()
-                .taskId("510").taskName("测试任务").taskService("MyExTaskable")
+                .taskId("510").taskName("测试任务").taskService(MyExTaskable.class.getSimpleName())
                 .build();
         taskRunner.submit(vo);
 
