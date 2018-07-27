@@ -1,10 +1,13 @@
-package com.github.bingoohuang.delayqueue;
+package com.github.bingoohuang.delayqueue.spring;
 
+import com.github.bingoohuang.delayqueue.TaskItem;
 import org.n3r.eql.eqler.annotations.Dynamic;
+import org.n3r.eql.eqler.annotations.Eqler;
 import org.n3r.eql.eqler.annotations.Sql;
 
 import java.util.List;
 
+@Eqler
 public interface TaskDao {
     @Sql("insert into $$(TASK_ID, RELATIVE_ID, CLASSIFIER, TASK_NAME, TASK_SERVICE, STATE, RUN_AT, " +
             "TIMEOUT, START_TIME, END_TIME, RESULT, ATTACHMENT, VAR1,VAR2,VAR3, CREATE_TIME) " +

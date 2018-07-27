@@ -5,7 +5,9 @@ import com.github.bingoohuang.delayqueue.TaskableFactory;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.stereotype.Component;
 
+@Component
 public class SpringTaskableFactory implements TaskableFactory, ApplicationContextAware {
     private ApplicationContext appContext;
 

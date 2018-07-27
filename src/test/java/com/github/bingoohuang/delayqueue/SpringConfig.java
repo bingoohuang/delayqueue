@@ -1,12 +1,9 @@
 package com.github.bingoohuang.delayqueue;
 
-import com.github.bingoohuang.delayqueue.spring.SpringTaskConfig;
-import com.github.bingoohuang.delayqueue.spring.SpringTaskableFactory;
+import com.github.bingoohuang.delayqueue.spring.TaskSpringEnabled;
 import lombok.Cleanup;
 import lombok.SneakyThrows;
 import lombok.val;
-import org.n3r.eql.eqler.EqlerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -15,7 +12,7 @@ import redis.embedded.RedisServer;
 
 import java.net.ServerSocket;
 
-@Configuration @ComponentScan
+@Configuration @ComponentScan @TaskSpringEnabled
 public class SpringConfig {
     @SneakyThrows
     public static int getRandomPort() {
@@ -30,24 +27,5 @@ public class SpringConfig {
         redis1.start();
 
         return new Jedis("127.0.0.1", port);
-    }
-
-    @Bean
-    public TaskableFactory taskableFactory() {
-        return new SpringTaskableFactory();
-    }
-
-    @Bean
-    public TaskConfig taskConfig() {
-        return new SpringTaskConfig();
-    }
-
-    @Bean
-    public TaskDao taskDao() {
-        return EqlerFactory.getEqler(TaskDao.class);
-    }
-
-    @Bean TaskRunner taskRunner(@Autowired TaskConfig taskConfig) {
-        return new TaskRunner(taskConfig);
     }
 }
