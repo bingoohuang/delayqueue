@@ -63,6 +63,35 @@ VAR3 varchar(30) NULL COMMENT '参数3',
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '任务表';
 ```
 
+# Code Demo
+```java
+
+@Component @Slf4j
+public class TaskServiceScheduling {
+    @Autowired TaskRunner taskRunner;
+
+    private AtomicBoolean inited = new AtomicBoolean(false);
+
+    @Scheduled(fixedDelay = 1000, initialDelay = 10000)
+    public void tasking() {
+        if (!inited.get()) {
+            inited.set(true);
+            taskRunner.initialize("x");
+        }
+
+        taskRunner.fire();
+    }
+}
+
+@Configuration
+@EnableScheduling
+@TaskSpringEnabled
+public class SpringConfig {
+    
+}
+
+```
+
 # Redis Sorted Set
 
 [Redis Sorted Sets](https://redis.io/topics/data-types) are, similarly to Redis Sets, non repeating collections of Strings. The difference is that every member of a Sorted Set is associated with score, that is used in order to take the sorted set ordered, from the smallest to the greatest score. While members are unique, scores may be repeated.
