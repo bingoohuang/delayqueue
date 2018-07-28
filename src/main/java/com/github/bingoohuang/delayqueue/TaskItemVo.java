@@ -2,9 +2,9 @@ package com.github.bingoohuang.delayqueue;
 
 import com.github.bingoohuang.westcache.utils.FastJsons;
 import com.github.bingoohuang.westid.WestId;
+import com.google.common.base.MoreObjects;
 import lombok.Builder;
 import lombok.Value;
-import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
 
 import static org.apache.commons.lang3.StringUtils.isNotEmpty;
@@ -23,13 +23,13 @@ public class TaskItemVo {
 
     public TaskItem createTaskItem() {
         return TaskItem.builder()
-                .taskId(StringUtils.defaultString(getTaskId(), String.valueOf(WestId.next())))
+                .taskId(MoreObjects.firstNonNull(getTaskId(), String.valueOf(WestId.next())))
                 .relativeId(getRelativeId())
-                .classifier(getClassifier())
-                .taskName(checkNotEmpty(getTaskName(), "任务名称不可缺少"))
+                .classifier(MoreObjects.firstNonNull(getClassifier(), "default"))
                 .taskService(checkNotEmpty(getTaskService(), "任务执行服务名称不可缺少"))
+                .taskName(MoreObjects.firstNonNull(getTaskName(), getTaskService()))
                 .state(TaskItem.待运行)
-                .runAt(getRunAt())
+                .runAt(Util.emptyThenNow(getRunAt()))
                 .timeout(getTimeout())
                 .attachment(FastJsons.json(getAttachment()))
                 .var1(getVar1())
@@ -44,15 +44,4 @@ public class TaskItemVo {
 
         throw new RuntimeException(desc);
     }
-
-    public DateTime getRunAt() {
-        return Util.emptyThenNow(runAt);
-    }
-
-
-    public String getClassifier() {
-        return classifier != null ? classifier : "default";
-    }
-
-
 }

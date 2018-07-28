@@ -48,7 +48,7 @@ public class TaskRunner implements Runnable {
     public TaskItem submit(TaskItemVo taskVo) {
         val task = taskVo.createTaskItem();
         taskDao.add(task, taskTableName);
-        jedis.zadd(queueKey, taskVo.getRunAt().getMillis(), task.getTaskId());
+        jedis.zadd(queueKey, task.getRunAt().getMillis(), task.getTaskId());
         return task;
     }
 

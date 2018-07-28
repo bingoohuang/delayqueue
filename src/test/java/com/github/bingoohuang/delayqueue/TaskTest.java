@@ -166,11 +166,6 @@ public class TaskTest {
     }
 
     @Test(expected = RuntimeException.class)
-    public void taskNameRequired() {
-        taskRunner.submit(TaskItemVo.builder().taskService(MyTaskable.class.getSimpleName()).build());
-    }
-
-    @Test(expected = RuntimeException.class)
     public void taskServiceRequired() {
         taskRunner.submit(TaskItemVo.builder().taskName(MyTaskable.class.getSimpleName()).build());
     }
