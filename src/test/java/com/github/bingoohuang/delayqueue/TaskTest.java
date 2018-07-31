@@ -19,7 +19,6 @@ import redis.clients.jedis.Jedis;
 
 import java.util.Set;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 import static com.google.common.truth.Truth.assertThat;
 
@@ -188,7 +187,7 @@ public class TaskTest {
         Set<String> set = jedis.zrangeByScore(taskConfig.getQueueKey(), 0, System.currentTimeMillis());
         assertThat(set).isEmpty();
 
-        DelayQueueUtil.randomSleep(1500, 1800, TimeUnit.MILLISECONDS);
+        TaskUtil.randomSleepMillis(1500, 1800);
 
         taskRunner.fire();
 
@@ -215,7 +214,7 @@ public class TaskTest {
     @Test
     public void run() {
         Executors.newSingleThreadExecutor().submit(() -> taskRunner.run());
-        DelayQueueUtil.randomSleep(100, 200, TimeUnit.MILLISECONDS);
+        TaskUtil.randomSleepMillis(100, 200);
         taskRunner.setLoopStopped(true);
 
         assertThat(taskRunner.isLoopStopped()).isTrue();

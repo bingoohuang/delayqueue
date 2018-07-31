@@ -8,13 +8,11 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.joda.time.DateTime;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import static java.util.stream.Collectors.toMap;
 
 @Slf4j
 public class TaskRunner {
@@ -53,7 +51,7 @@ public class TaskRunner {
 
         val start = System.currentTimeMillis();
         while (System.currentTimeMillis() - start <= timeoutSeconds) {
-            DelayQueueUtil.randomSleep(500, 700, TimeUnit.MILLISECONDS);
+            TaskUtil.randomSleepMillis(500, 700);
 
             val task = find(taskItem.getTaskId()).get();
             if (!task.isReadyRun()) return task;
@@ -66,11 +64,11 @@ public class TaskRunner {
     /**
      * 提交一个异步任务。
      *
-     * @param taskVo 任务对象
+     * @param taskVos 任务对象
      * @return 任务对象
      */
-    public TaskItem submit(TaskItemVo taskVo) {
-        return submit(Lists.newArrayList(taskVo)).get(0);
+    public TaskItem submit(TaskItemVo... taskVos) {
+        return submit(Arrays.asList(taskVos)).get(0);
     }
 
     /**
@@ -80,9 +78,13 @@ public class TaskRunner {
      * @return 任务列表
      */
     public List<TaskItem> submit(List<TaskItemVo> taskVos) {
-        val tasks = taskVos.stream().map(TaskItemVo::createTaskItem).collect(Collectors.toList());
+        val tasks = taskVos.stream()
+                .map(TaskItemVo::createTaskItem)
+                .collect(Collectors.toList());
         taskDao.add(tasks, taskTableName);
-        val map = tasks.stream().collect(toMap(TaskItem::getTaskId, x -> (double) (x.getRunAt().getMillis())));
+        val map = tasks.stream().collect(
+                Collectors.toMap(TaskItem::getTaskId,
+                        x -> (double) (x.getRunAt().getMillis())));
         zsetCommands.zadd(queueKey, map);
         return tasks;
     }
@@ -135,7 +137,7 @@ public class TaskRunner {
         val tasks = taskDao.listReady(TaskItem.待运行, classifier, taskTableName);
         if (tasks.isEmpty()) return;
 
-        val map = tasks.stream().collect(toMap(TaskItem::getTaskId, x -> (double) (x.getRunAt().getMillis())));
+        val map = tasks.stream().collect(Collectors.toMap(TaskItem::getTaskId, x -> (double) (x.getRunAt().getMillis())));
         zsetCommands.zadd(queueKey, map);
     }
 
@@ -147,7 +149,8 @@ public class TaskRunner {
 
         while (!loopStopped) {
             if (fire()) continue;
-            if (DelayQueueUtil.randomSleep(100, 500, TimeUnit.MILLISECONDS)) break;
+            if (TaskUtil.randomSleepMillis(100, 500))
+                break;
         }
     }
 
@@ -213,7 +216,7 @@ public class TaskRunner {
 
         try {
             val taskable = taskableFunction.apply(task.getTaskService());
-            val pair = DelayQueueUtil.timeoutRun(() -> fire(taskable, task), task.getTimeout());
+            val pair = TaskUtil.timeoutRun(() -> fire(taskable, task), task.getTimeout());
             if (pair._2) {
                 log.warn("执行任务超时🌶{}", task);
                 endTask(task, TaskItem.已超时, TaskResult.of("任务超时"));

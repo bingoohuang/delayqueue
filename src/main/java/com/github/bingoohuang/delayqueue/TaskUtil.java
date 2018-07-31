@@ -12,20 +12,19 @@ import java.util.Set;
 import java.util.concurrent.*;
 
 @Slf4j
-public class DelayQueueUtil {
+public class TaskUtil {
     private final static ThreadLocalRandom random = ThreadLocalRandom.current();
 
     /**
-     * Sleep in random time between min and max.
+     * Sleep in random time between minMillis and maxMillis.
      *
-     * @param min      minimum time
-     * @param max      maximum time
-     * @param timeUnit time unit
+     * @param minMillis minimum time in millis
+     * @param maxMillis maximum time in millis
      * @return true if interrupted
      */
-    public static boolean randomSleep(int min, int max, TimeUnit timeUnit) {
+    public static boolean randomSleepMillis(int minMillis, int maxMillis) {
         try {
-            timeUnit.sleep(random.nextInt(max - min) + min);
+            Thread.sleep(random.nextInt(maxMillis - minMillis) + minMillis);
             return false;
         } catch (InterruptedException e) {
             return true;
@@ -54,7 +53,8 @@ public class DelayQueueUtil {
 
     public static ZsetCommands adapt(JedisCommands jedis) {
         return new ZsetCommands() {
-            @Override public Long zadd(String key, Map<String, Double> scoreMembers) {
+            @Override
+            public Long zadd(String key, Map<String, Double> scoreMembers) {
                 return jedis.zadd(key, scoreMembers);
             }
 
@@ -62,7 +62,8 @@ public class DelayQueueUtil {
                 return jedis.zrem(key, member);
             }
 
-            @Override public Set<String> zrangeByScore(String key, double min, double max, int offset, int count) {
+            @Override
+            public Set<String> zrangeByScore(String key, double min, double max, int offset, int count) {
                 return jedis.zrangeByScore(key, min, max, offset, count);
             }
         };
