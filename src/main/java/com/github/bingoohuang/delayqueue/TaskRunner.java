@@ -53,7 +53,7 @@ public class TaskRunner {
 
         val start = System.currentTimeMillis();
         while (System.currentTimeMillis() - start <= timeoutSeconds) {
-            Util.randomSleep(500, 700, TimeUnit.MILLISECONDS);
+            DelayQueueUtil.randomSleep(500, 700, TimeUnit.MILLISECONDS);
 
             val task = find(taskItem.getTaskId()).get();
             if (!task.isReadyRun()) return task;
@@ -147,7 +147,7 @@ public class TaskRunner {
 
         while (!loopStopped) {
             if (fire()) continue;
-            if (Util.randomSleep(100, 500, TimeUnit.MILLISECONDS)) break;
+            if (DelayQueueUtil.randomSleep(100, 500, TimeUnit.MILLISECONDS)) break;
         }
     }
 
@@ -213,7 +213,7 @@ public class TaskRunner {
 
         try {
             val taskable = taskableFunction.apply(task.getTaskService());
-            val pair = Util.timeoutRun(() -> fire(taskable, task), task.getTimeout());
+            val pair = DelayQueueUtil.timeoutRun(() -> fire(taskable, task), task.getTimeout());
             if (pair._2) {
                 log.warn("执行任务超时🌶{}", task);
                 endTask(task, TaskItem.已超时, TaskResult.of("任务超时"));

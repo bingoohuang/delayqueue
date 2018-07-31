@@ -1,9 +1,6 @@
 package com.github.bingoohuang.delayqueue.spring;
 
-import com.github.bingoohuang.delayqueue.ResultStoreable;
-import com.github.bingoohuang.delayqueue.TaskConfig;
-import com.github.bingoohuang.delayqueue.Taskable;
-import com.github.bingoohuang.delayqueue.ZsetCommands;
+import com.github.bingoohuang.delayqueue.*;
 import lombok.Cleanup;
 import lombok.Getter;
 import lombok.SneakyThrows;
@@ -13,9 +10,7 @@ import org.springframework.stereotype.Component;
 import redis.clients.jedis.JedisCommands;
 
 import javax.annotation.PostConstruct;
-import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.function.Function;
 
 @Component
@@ -39,19 +34,7 @@ public class SpringTaskConfig implements TaskConfig {
     }
 
     @Override public ZsetCommands getJedis() {
-        return new ZsetCommands() {
-            @Override public Long zadd(String key, Map<String, Double> scoreMembers) {
-                return jedis.zadd(key, scoreMembers);
-            }
-
-            @Override public Long zrem(String key, String... member) {
-                return jedis.zrem(key, member);
-            }
-
-            @Override public Set<String> zrangeByScore(String key, double min, double max, int offset, int count) {
-                return jedis.zrangeByScore(key, min, max, offset, count);
-            }
-        };
+        return DelayQueueUtil.adapt(jedis);
     }
 
     @Override public Function<String, Taskable> getTaskableFunction() {

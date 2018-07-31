@@ -7,18 +7,18 @@ import java.util.concurrent.TimeUnit;
 
 import static com.google.common.truth.Truth.assertThat;
 
-public class UtilTest {
+public class DelayQueueUtilTest {
 
     @Test
     public void randomSleep() {
-        new Util();
+        new DelayQueueUtil();
         Thread.currentThread().interrupt();
-        Util.randomSleep(10, 20, TimeUnit.MILLISECONDS);
+        DelayQueueUtil.randomSleep(10, 20, TimeUnit.MILLISECONDS);
     }
 
     @Test
     public void emptyThenNow() {
-        assertThat(Util.emptyThenNow(null)).isNotNull();
-        assertThat(Util.emptyThenNow(DateTime.now())).isNotNull();
+        assertThat(DelayQueueUtil.emptyThenNow(null)).isNotNull();
+        assertThat(DelayQueueUtil.emptyThenNow(DateTime.now())).isNotNull();
     }
 }

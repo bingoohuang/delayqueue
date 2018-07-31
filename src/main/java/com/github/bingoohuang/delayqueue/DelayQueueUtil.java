@@ -5,11 +5,14 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.joda.time.DateTime;
 import org.n3r.eql.util.Pair;
+import redis.clients.jedis.JedisCommands;
 
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.*;
 
 @Slf4j
-public class Util {
+public class DelayQueueUtil {
     private final static ThreadLocalRandom random = ThreadLocalRandom.current();
 
     /**
@@ -47,5 +50,21 @@ public class Util {
 
     public static DateTime emptyThenNow(DateTime dateTime) {
         return dateTime == null ? DateTime.now() : dateTime;
+    }
+
+    public static ZsetCommands adapt(JedisCommands jedis) {
+        return new ZsetCommands() {
+            @Override public Long zadd(String key, Map<String, Double> scoreMembers) {
+                return jedis.zadd(key, scoreMembers);
+            }
+
+            @Override public Long zrem(String key, String... member) {
+                return jedis.zrem(key, member);
+            }
+
+            @Override public Set<String> zrangeByScore(String key, double min, double max, int offset, int count) {
+                return jedis.zrangeByScore(key, min, max, offset, count);
+            }
+        };
     }
 }

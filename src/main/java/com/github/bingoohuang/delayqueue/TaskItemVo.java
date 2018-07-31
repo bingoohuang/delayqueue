@@ -30,7 +30,7 @@ public class TaskItemVo {
                 .taskService(checkNotEmpty(getTaskService(), "任务执行服务名称不可缺少"))
                 .taskName(MoreObjects.firstNonNull(getTaskName(), getTaskService()))
                 .state(TaskItem.待运行)
-                .runAt(Util.emptyThenNow(getRunAt()))
+                .runAt(DelayQueueUtil.emptyThenNow(getRunAt()))
                 .timeout(getTimeout())
                 .attachment(FastJsons.json(getAttachment()))
                 .var1(getVar1())

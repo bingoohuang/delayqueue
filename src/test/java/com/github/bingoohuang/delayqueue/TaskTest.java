@@ -188,7 +188,7 @@ public class TaskTest {
         Set<String> set = jedis.zrangeByScore(taskConfig.getQueueKey(), 0, System.currentTimeMillis());
         assertThat(set).isEmpty();
 
-        Util.randomSleep(1500, 1800, TimeUnit.MILLISECONDS);
+        DelayQueueUtil.randomSleep(1500, 1800, TimeUnit.MILLISECONDS);
 
         taskRunner.fire();
 
