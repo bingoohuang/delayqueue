@@ -247,7 +247,7 @@ public class TaskTest {
                 .resultStore(RedisResultStore.class.getSimpleName())
                 .build();
 
-        TaskItem item2 = taskRunner.invoke(vo2, 0);
+        TaskItem item2 = taskRunner.invoke(vo2, -1);
         assertThat(item2.isInvokeTimeout()).isEqualTo(true);
 
         taskRunner.setLoopStopped(true);

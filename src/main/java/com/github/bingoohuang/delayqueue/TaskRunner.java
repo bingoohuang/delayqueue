@@ -49,19 +49,18 @@ public class TaskRunner {
      * @return 任务对象。（需要调用isInvokeTimeout来判断是否超时）
      */
     public TaskItem invoke(TaskItemVo taskVo, int timeoutSeconds) {
-        val taskId = submit(taskVo).getTaskId();
+        val taskItem = submit(taskVo);
 
         val start = System.currentTimeMillis();
-        while (true) {
-            val task = find(taskId).get();
-            if (!task.isReadyRun()) return task;
-            if (System.currentTimeMillis() - start > timeoutSeconds) {
-                task.setInvokeTimeout(true);
-                return task;
-            }
-
+        while (System.currentTimeMillis() - start <= timeoutSeconds) {
             Util.randomSleep(500, 700, TimeUnit.MILLISECONDS);
+
+            val task = find(taskItem.getTaskId()).get();
+            if (!task.isReadyRun()) return task;
         }
+
+        taskItem.setInvokeTimeout(true);
+        return taskItem;
     }
 
     /**
