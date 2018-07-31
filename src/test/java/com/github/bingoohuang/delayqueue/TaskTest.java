@@ -210,7 +210,7 @@ public class TaskTest {
 
     @Test
     public void run() {
-        Executors.newSingleThreadExecutor().submit(taskRunner);
+        Executors.newSingleThreadExecutor().submit(() -> taskRunner.run());
         Util.randomSleep(100, 200, TimeUnit.MILLISECONDS);
         taskRunner.setLoopStopped(true);
 

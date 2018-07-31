@@ -1,10 +1,11 @@
 package com.github.bingoohuang.delayqueue;
 
 import com.github.bingoohuang.delayqueue.spring.TaskDao;
-import redis.clients.jedis.JedisCommands;
+
+import java.util.function.Function;
 
 public interface TaskConfig {
-    JedisCommands getJedis();
+    ZsetCommands getJedis();
 
     String getQueueKey();
 
@@ -12,5 +13,5 @@ public interface TaskConfig {
 
     String getTaskTableName();
 
-    TaskableFactory getTaskableFactory();
+    Function<String, Taskable> getTaskableFunction();
 }
