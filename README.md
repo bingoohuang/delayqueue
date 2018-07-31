@@ -23,7 +23,9 @@ CREATE TABLE t_delay_task (
  TIMEOUT tinyint NOT NULL DEFAULT 0 COMMENT '超时时间（秒）',
  START_TIME datetime NULL COMMENT '开始运行时间',
  END_TIME datetime NULL COMMENT '结束运行时间',
- RESULT varchar(300) NULL COMMENT '任务运行结果',
+ RESULT_STATE varchar(300) NULL COMMENT '任务执行状态',
+ RESULT_STORE varchar(100) NOT NULL COMMENT '结果存储方式',
+ RESULT TEXT  NULL COMMENT '任务执行详细结果',
  ATTACHMENT   TEXT  NULL COMMENT '附件',
  VAR1 varchar(30) NULL COMMENT '参数1',
  VAR2 varchar(30) NULL COMMENT '参数2',
@@ -71,12 +73,16 @@ public class SomeService {
     @Autowired TaskRunner taskRunner;
     
     public void doSomething() {
-        val vo = TaskItemVo.builder()
+        TaskItemVo vo = TaskItemVo.builder()
                 .taskName("My Task")
                 .taskService(MyTaskable.class.getSimpleName())
                 .attachment(attachment)
                 .build();
-       taskRunner.submit(vo);
+        taskRunner.submit(vo);
+       
+       // demo to invoke the task (wait the task to be executed)
+        TaskItem item1 = taskRunner.invoke(vo1, 3000);
+        assertThat(item1.getResultAsString()).isEqualTo("DANGDANGDANG");
     }
 }
 

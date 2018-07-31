@@ -1,17 +1,17 @@
 package com.github.bingoohuang.delayqueue.spring;
 
-import com.github.bingoohuang.delayqueue.Taskable;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.stereotype.Component;
 
 @Component
-public class SpringTaskableFactory implements ApplicationContextAware {
+public class SpringBeanFactory implements ApplicationContextAware {
     private ApplicationContext appContext;
 
-    public Taskable getTaskService(String taskService) {
-        return (Taskable) appContext.getBean(StringUtils.uncapitalize(taskService));
+    @SuppressWarnings("unchecked")
+    public <T> T getBean(String name) {
+        return (T) appContext.getBean(StringUtils.uncapitalize(name));
     }
 
     @Override public void setApplicationContext(ApplicationContext appContext) {

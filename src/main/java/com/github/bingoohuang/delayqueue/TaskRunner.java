@@ -23,6 +23,7 @@ public class TaskRunner {
     private final ZsetCommands zsetCommands;
     private final String queueKey;
     private final Function<String, Taskable> taskableFunction;
+    private final Function<String, ResultStoreable> resultStoreFunction;
 
     @Getter @Setter private volatile boolean loopStopped = false;
 
@@ -37,6 +38,30 @@ public class TaskRunner {
         this.zsetCommands = config.getJedis();
         this.queueKey = config.getQueueKey();
         this.taskableFunction = config.getTaskableFunction();
+        this.resultStoreFunction = config.getResultStoreableFunction();
+    }
+
+    /**
+     * 调用一个异步任务，并且等待其执行，并且返回结果
+     *
+     * @param taskVo         任务对象
+     * @param timeoutSeconds 超时秒数
+     * @return 任务对象。（需要调用isInvokeTimeout来判断是否超时）
+     */
+    public TaskItem invoke(TaskItemVo taskVo, int timeoutSeconds) {
+        val taskId = submit(taskVo).getTaskId();
+
+        val start = System.currentTimeMillis();
+        while (true) {
+            val task = find(taskId).get();
+            if (!task.isReadyRun()) return task;
+            if (System.currentTimeMillis() - start > timeoutSeconds) {
+                task.setInvokeTimeout(true);
+                return task;
+            }
+
+            Util.randomSleep(500, 700, TimeUnit.MILLISECONDS);
+        }
     }
 
     /**
@@ -123,9 +148,7 @@ public class TaskRunner {
 
         while (!loopStopped) {
             if (fire()) continue;
-
-            // 随机休眠0.5秒到1.5秒
-            if (Util.randomSleep(500, 1500, TimeUnit.MILLISECONDS)) break;
+            if (Util.randomSleep(100, 500, TimeUnit.MILLISECONDS)) break;
         }
     }
 
@@ -154,7 +177,11 @@ public class TaskRunner {
      * @return 找到的任务
      */
     public Optional<TaskItem> find(String taskId) {
-        return Optional.ofNullable(taskDao.find(taskId, taskTableName));
+        TaskItem task = taskDao.find(taskId, taskTableName);
+        if (task != null && task.isComplete()) {
+            resultStoreFunction.apply(task.getResultStore()).load(task);
+        }
+        return Optional.ofNullable(task);
     }
 
     /**
@@ -190,18 +217,18 @@ public class TaskRunner {
             val pair = Util.timeoutRun(() -> fire(taskable, task), task.getTimeout());
             if (pair._2) {
                 log.warn("执行任务超时🌶{}", task);
-                endTask(task, TaskItem.已超时, "任务超时");
+                endTask(task, TaskItem.已超时, TaskResult.of("任务超时"));
             } else {
                 log.info("执行任务成功👌{}", task);
                 endTask(task, TaskItem.已完成, pair._1);
             }
         } catch (Exception ex) {
             log.warn("执行任务异常😂{}", task, ex);
-            endTask(task, TaskItem.已失败, ex.toString());
+            endTask(task, TaskItem.已失败, TaskResult.of(ex.toString()));
         }
     }
 
-    private String fire(Taskable taskable, TaskItem task) {
+    private TaskResult fire(Taskable taskable, TaskItem task) {
         taskable.beforeRun(task);
         try {
             return taskable.run(task);
@@ -213,13 +240,13 @@ public class TaskRunner {
         }
     }
 
-    private void endTask(TaskItem task, String finalState, String result) {
+    private void endTask(TaskItem task, String finalState, TaskResult result) {
         task.setState(finalState);
-        task.setResult(result);
+        task.setResultState(result.getResultState());
         task.setEndTime(DateTime.now());
+        resultStoreFunction.apply(task.getResultStore()).store(task, result);
         taskDao.end(task, TaskItem.运行中, taskTableName);
     }
-
 }
 
 

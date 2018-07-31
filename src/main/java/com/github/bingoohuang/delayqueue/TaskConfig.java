@@ -14,4 +14,6 @@ public interface TaskConfig {
     String getTaskTableName();
 
     Function<String, Taskable> getTaskableFunction();
+
+    Function<String, ResultStoreable> getResultStoreableFunction();
 }

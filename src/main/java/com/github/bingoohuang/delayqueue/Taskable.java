@@ -19,7 +19,7 @@ public interface Taskable {
      * @param taskItem 任务细节。
      * @return 运行结果
      */
-    String run(TaskItem taskItem);
+    TaskResult run(TaskItem taskItem);
 
     /**
      * 运行任务之后做点事（可以做一些前置处理，比如清除一些环境变量等）。

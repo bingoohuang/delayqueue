@@ -1,6 +1,8 @@
 package com.github.bingoohuang.delayqueue;
 
+import com.github.bingoohuang.delayqueue.spring.RedisResultStore;
 import com.github.bingoohuang.delayqueue.spring.TaskDao;
+import com.github.bingoohuang.westid.WestId;
 import com.google.common.collect.Lists;
 import lombok.val;
 import org.joda.time.DateTime;
@@ -38,6 +40,7 @@ public class TaskTest {
 
     @Test
     public void submit() {
+        taskRunner.setLoopStopped(false);
         taskRunner.initialize("default");
 
         val attachment = AttachmentVo.builder().name("黄进兵").age(110)
@@ -59,7 +62,7 @@ public class TaskTest {
         set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
         assertThat(set).isEmpty();
 
-        TaskItem item = taskDao.find("110", taskConfig.getTaskTableName());
+        TaskItem item = taskRunner.find("110").get();
         assertThat(item.getTaskId()).isEqualTo("110");
         assertThat(item.getState()).isEqualTo(TaskItem.已完成);
         assertThat(item.getAttachmentAsString()).isEqualTo("{\"createTime\":\"2018-07-19 11:02:17.000\",\"name\":\"黄进兵\",\"age\":110}");
@@ -82,7 +85,7 @@ public class TaskTest {
 
         set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
         assertThat(set).isEmpty();
-        TaskItem item = taskDao.find("120", taskConfig.getTaskTableName());
+        TaskItem item = taskRunner.find("120").get();
         assertThat(item.getState()).isEqualTo(TaskItem.已取消);
     }
 
@@ -94,6 +97,7 @@ public class TaskTest {
 
     @Test
     public void cancelByRelativeId() {
+        taskRunner.setLoopStopped(false);
         val vo = TaskItemVo.builder().relativeId("120").taskName("测试任务").taskService(MyTaskable.class.getSimpleName()).build();
         val task = taskRunner.submit(vo);
 
@@ -108,7 +112,6 @@ public class TaskTest {
         assertThat(items).hasSize(1);
         assertThat(items.get(0).getState()).isEqualTo(TaskItem.已取消);
     }
-
 
     @Test
     public void submitMulti() {
@@ -127,10 +130,10 @@ public class TaskTest {
         set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
         assertThat(set).hasSize(0);
 
-        TaskItem item = taskDao.find("210", taskConfig.getTaskTableName());
+        TaskItem item = taskRunner.find("210").get();
         assertThat(item.getState()).isEqualTo(TaskItem.已完成);
 
-        item = taskDao.find("220", taskConfig.getTaskTableName());
+        item = taskRunner.find("220").get();
         assertThat(item.getState()).isEqualTo(TaskItem.已完成);
     }
 
@@ -140,7 +143,7 @@ public class TaskTest {
         taskRunner.submit(vo);
         taskRunner.fire();
 
-        TaskItem item = taskDao.find("310", taskConfig.getTaskTableName());
+        TaskItem item = taskRunner.find("310").get();
         assertThat(item.getState()).isEqualTo(TaskItem.已超时);
     }
 
@@ -150,7 +153,7 @@ public class TaskTest {
         taskRunner.submit(vo);
         taskRunner.fire();
 
-        TaskItem item = taskDao.find("320", taskConfig.getTaskTableName());
+        TaskItem item = taskRunner.find("320").get();
         assertThat(item.getState()).isEqualTo(TaskItem.已完成);
     }
 
@@ -160,9 +163,9 @@ public class TaskTest {
         taskRunner.submit(vo);
         taskRunner.fire();
 
-        TaskItem item = taskDao.find("330", taskConfig.getTaskTableName());
+        TaskItem item = taskRunner.find("330").get();
         assertThat(item.getState()).isEqualTo(TaskItem.已失败);
-        assertThat(item.getResult()).isEqualTo("java.lang.RuntimeException: 😡，竟然崩溃了，泪奔");
+        assertThat(item.getResultState()).isEqualTo("java.lang.RuntimeException: 😡，竟然崩溃了，泪奔");
     }
 
     @Test(expected = RuntimeException.class)
@@ -189,12 +192,14 @@ public class TaskTest {
 
         taskRunner.fire();
 
-        TaskItem item = taskDao.find("410", taskConfig.getTaskTableName());
+        TaskItem item = taskRunner.find("410").get();
         assertThat(item.getState()).isEqualTo(TaskItem.已完成);
     }
 
     @Test
     public void taskException() {
+        taskRunner.setLoopStopped(false);
+
         val vo = TaskItemVo.builder()
                 .taskId("510").taskName("测试任务").taskService(MyExTaskable.class.getSimpleName())
                 .build();
@@ -202,18 +207,49 @@ public class TaskTest {
 
         taskRunner.fire();
 
-        TaskItem item = taskDao.find("510", taskConfig.getTaskTableName());
+        TaskItem item = taskRunner.find("510").get();
         assertThat(item.getState()).isEqualTo(TaskItem.已失败);
-        assertThat(item.getResult()).isEqualTo("java.lang.RuntimeException: 😡，竟然崩溃了，泪奔");
+        assertThat(item.getResultState()).isEqualTo("java.lang.RuntimeException: 😡，竟然崩溃了，泪奔");
     }
 
 
     @Test
-    public void run() {
-        Executors.newSingleThreadExecutor().submit(() -> taskRunner.run());
-        Util.randomSleep(100, 200, TimeUnit.MILLISECONDS);
-        taskRunner.setLoopStopped(true);
+    public void invokeDirect() {
+        taskRunner.setLoopStopped(false);
+        String taskId = String.valueOf(WestId.next());
+        val vo = TaskItemVo.builder()
+                .taskId(taskId).taskName("测试任务").taskService(MyInvokeTaskable.class.getSimpleName())
+                .build();
 
-        assertThat(taskRunner.isLoopStopped()).isTrue();
+        taskRunner.submit(vo);
+        taskRunner.fire();
+        TaskItem taskItem = taskRunner.find(taskId).get();
+        assertThat(taskItem.getResultAsString()).isEqualTo("DANGDANGDANG");
+    }
+
+    @Test
+    public void invokeRedis() {
+        Executors.newSingleThreadExecutor().submit(() -> taskRunner.run());
+
+        String taskId1 = String.valueOf(WestId.next());
+        val vo1 = TaskItemVo.builder()
+                .taskId(taskId1).taskName("测试任务").taskService(MyInvokeTaskable.class.getSimpleName())
+                .resultStore(RedisResultStore.class.getSimpleName())
+                .build();
+
+        TaskItem item1 = taskRunner.invoke(vo1, 3000);
+        assertThat(item1.getResultAsString()).isEqualTo("DANGDANGDANG");
+
+
+        String taskId2 = String.valueOf(WestId.next());
+        val vo2 = TaskItemVo.builder()
+                .taskId(taskId2).taskName("测试任务").taskService(MyInvokeTaskable.class.getSimpleName())
+                .resultStore(RedisResultStore.class.getSimpleName())
+                .build();
+
+        TaskItem item2 = taskRunner.invoke(vo2, 0);
+        assertThat(item2.isInvokeTimeout()).isEqualTo(true);
+
+        taskRunner.setLoopStopped(true);
     }
 }

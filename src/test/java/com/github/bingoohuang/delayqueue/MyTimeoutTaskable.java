@@ -8,10 +8,10 @@ import java.util.concurrent.TimeUnit;
 @Service @Slf4j
 public class MyTimeoutTaskable implements Taskable {
 
-    @Override public String run(TaskItem taskItem) {
+    @Override public TaskResult run(TaskItem taskItem) {
         log.debug("超时任务开始");
         Util.randomSleep(1100, 1200, TimeUnit.MILLISECONDS);
         log.debug("超时任务结束");
-        return "OK";
+        return TaskResult.OK;
     }
 }

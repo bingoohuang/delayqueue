@@ -19,12 +19,16 @@ public class TaskItem {
     private int timeout;          // 超时（秒）
     private DateTime startTime;   // 开始运行时间
     private DateTime endTime;     // 结束运行时间
+    private String resultState;   // 任务执行状态
+    private String resultStore;   // 结果存储方式，DIRECT直接存储在RESULT字段中，REDIS存储在REDIS中
     private String result;        // 任务运行结果
     private String attachment;    // 附件
     private String var1;          // 参数1
     private String var2;          // 参数2
     private String var3;          // 参数3
     private DateTime createTime;  // 创建时间
+
+    private boolean invokeTimeout; // 是否调用超时
 
     public static final String 待运行 = "待运行";
     public static final String 运行中 = "运行中";
@@ -39,5 +43,21 @@ public class TaskItem {
 
     public <T> T getAttachment(Class<T> clazz) {
         return FastJsons.parse(attachment, clazz);
+    }
+
+    public String getResultAsString() {
+        return getResult(String.class);
+    }
+
+    public <T> T getResult(Class<T> clazz) {
+        return FastJsons.parse(result, clazz);
+    }
+
+    public boolean isComplete() {
+        return 已完成.equals(state);
+    }
+
+    public boolean isReadyRun() {
+        return 待运行.equals(state);
     }
 }

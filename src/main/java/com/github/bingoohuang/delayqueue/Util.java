@@ -30,7 +30,7 @@ public class Util {
     }
 
     @SneakyThrows
-    public static Pair<String, Boolean> timeoutRun(Callable<String> runnable, int timeout) {
+    public static <T> Pair<T, Boolean> timeoutRun(Callable<T> runnable, int timeout) {
         if (timeout <= 0) return Pair.of(runnable.call(), false);
 
         val executorService = Executors.newSingleThreadExecutor();
