@@ -116,7 +116,7 @@ public class TaskTest {
     public void submitMulti() {
         val vo1 = TaskItemVo.builder().taskId("210").taskName("测试任务").taskService(MyTaskable.class.getSimpleName()).build();
         val vo2 = TaskItemVo.builder().taskId("220").taskName("测试任务").taskService(MyTaskable.class.getSimpleName()).build();
-        taskRunner.submit(Lists.newArrayList(vo1, vo2));
+        taskRunner.submit(vo1, vo2);
 
         Set<String> set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
         assertThat(set).containsExactly("210", "220");

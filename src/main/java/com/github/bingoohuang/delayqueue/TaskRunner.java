@@ -149,8 +149,7 @@ public class TaskRunner {
 
         while (!loopStopped) {
             if (fire()) continue;
-            if (TaskUtil.randomSleepMillis(100, 500))
-                break;
+            if (TaskUtil.randomSleepMillis(100, 500)) break;
         }
     }
 
