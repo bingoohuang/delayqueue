@@ -212,6 +212,14 @@ public class TaskTest {
         assertThat(item.getResultState()).isEqualTo("java.lang.RuntimeException: 😡，竟然崩溃了，泪奔");
     }
 
+    @Test
+    public void run() {
+        Executors.newSingleThreadExecutor().submit(() -> taskRunner.run());
+        DelayQueueUtil.randomSleep(100, 200, TimeUnit.MILLISECONDS);
+        taskRunner.setLoopStopped(true);
+
+        assertThat(taskRunner.isLoopStopped()).isTrue();
+    }
 
     @Test
     public void invokeDirect() {
