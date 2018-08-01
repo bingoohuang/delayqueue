@@ -3,12 +3,13 @@ package com.github.bingoohuang.delayqueue;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import net.sf.cglib.proxy.Enhancer;
+import net.sf.cglib.proxy.MethodInterceptor;
 import org.joda.time.DateTime;
 import org.n3r.eql.util.Pair;
-import redis.clients.jedis.JedisCommands;
 
-import java.util.Map;
-import java.util.Set;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.concurrent.*;
 
 @Slf4j
@@ -32,7 +33,7 @@ public class TaskUtil {
     }
 
     @SneakyThrows
-    public static <T> Pair<T, Boolean> timeoutRun(Callable<T> runnable, int timeout) {
+    public static <T> Pair<? extends T, Boolean> timeoutRun(Callable<? extends T> runnable, int timeout) {
         if (timeout <= 0) return Pair.of(runnable.call(), false);
 
         val executorService = Executors.newSingleThreadExecutor();
@@ -51,21 +52,23 @@ public class TaskUtil {
         return dateTime == null ? DateTime.now() : dateTime;
     }
 
-    public static ZsetCommands adapt(JedisCommands jedis) {
-        return new ZsetCommands() {
-            @Override
-            public Long zadd(String key, Map<String, Double> scoreMembers) {
-                return jedis.zadd(key, scoreMembers);
-            }
+    @SuppressWarnings("unchecked")
+    public static <T> T adapt(Object obj, Class<? extends T> target) {
+        return (T) (target.isAssignableFrom(obj.getClass())
+                ? obj
+                : target.isInterface()
 
-            @Override public Long zrem(String key, String... member) {
-                return jedis.zrem(key, member);
-            }
+                ? Proxy.newProxyInstance(target.getClassLoader(), new Class[]{target}, (p, m, args) -> adapt(obj, m, args))
+                : Enhancer.create(target, new Class[]{}, (MethodInterceptor) (o, m, args, p) -> adapt(obj, m, args)));
+    }
 
-            @Override
-            public Set<String> zrangeByScore(String key, double min, double max, int offset, int count) {
-                return jedis.zrangeByScore(key, min, max, offset, count);
-            }
-        };
+    @SneakyThrows
+    public static Object adapt(Object obj, Method adapted, Object[] args) {
+        return findAdapted(obj, adapted).invoke(obj, args);
+    }
+
+    @SneakyThrows
+    public static Method findAdapted(Object obj, Method adapted) {
+        return obj.getClass().getMethod(adapted.getName(), adapted.getParameterTypes());
     }
 }

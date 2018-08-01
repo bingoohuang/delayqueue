@@ -44,6 +44,12 @@
 
     <dependencies>
         <dependency>
+            <groupId>cglib</groupId>
+            <artifactId>cglib-nodep</artifactId>
+            <version>3.2.4</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
             <groupId>com.github.bingoohuang</groupId>
             <artifactId>westcache</artifactId>
             <version>0.0.32</version>

@@ -34,7 +34,7 @@ public class SpringTaskConfig implements TaskConfig {
     }
 
     @Override public ZsetCommands getJedis() {
-        return TaskUtil.adapt(jedis);
+        return TaskUtil.adapt(jedis, ZsetCommands.class);
     }
 
     @Override public Function<String, Taskable> getTaskableFunction() {
