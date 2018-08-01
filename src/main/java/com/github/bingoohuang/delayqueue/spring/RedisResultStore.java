@@ -10,7 +10,11 @@ import redis.clients.jedis.JedisCommands;
 
 @Component
 public class RedisResultStore implements ResultStoreable {
-    @Autowired JedisCommands jedisCommands;
+    private final JedisCommands jedisCommands;
+
+    public RedisResultStore(@Autowired JedisCommands jedisCommands) {
+        this.jedisCommands = jedisCommands;
+    }
 
     @Override public void store(TaskItem taskItem, TaskResult taskResult) {
         taskItem.setResultState(taskResult.getResultState());
