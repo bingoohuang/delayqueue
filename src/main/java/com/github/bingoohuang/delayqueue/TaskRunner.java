@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
 
 import java.util.Arrays;
@@ -245,7 +246,10 @@ public class TaskRunner {
         task.setState(finalState);
         task.setResultState(result.getResultState());
         task.setEndTime(DateTime.now());
-        resultStoreFunction.apply(task.getResultStore()).store(task, result);
+
+        if (StringUtils.isNotEmpty(task.getResultStore())) {
+            resultStoreFunction.apply(task.getResultStore()).store(task, result);
+        }
         taskDao.end(task, TaskItem.运行中, taskTableName);
     }
 }
