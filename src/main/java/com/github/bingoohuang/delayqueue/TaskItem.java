@@ -1,5 +1,6 @@
 package com.github.bingoohuang.delayqueue;
 
+import com.alibaba.fastjson.annotation.JSONField;
 import com.github.bingoohuang.westcache.utils.FastJsons;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -37,6 +38,7 @@ public class TaskItem {
     public static final String 已取消 = "已取消";
     public static final String 已超时 = "已超时";
 
+    @JSONField(serialize = false)
     public String getAttachmentAsString() {
         return getAttachment(String.class);
     }
@@ -45,6 +47,7 @@ public class TaskItem {
         return FastJsons.parse(attachment, clazz);
     }
 
+    @JSONField(serialize = false)
     public String getResultAsString() {
         return getResult(String.class);
     }
@@ -53,10 +56,12 @@ public class TaskItem {
         return FastJsons.parse(result, clazz);
     }
 
+    @JSONField(serialize = false)
     public boolean isComplete() {
         return 已完成.equals(state);
     }
 
+    @JSONField(serialize = false)
     public boolean isReadyRun() {
         return 待运行.equals(state);
     }
