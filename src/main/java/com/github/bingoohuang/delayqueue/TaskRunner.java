@@ -12,6 +12,7 @@ import org.joda.time.DateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -23,6 +24,7 @@ public class TaskRunner {
     private final String queueKey;
     private final Function<String, Taskable> taskableFunction;
     private final Function<String, ResultStoreable> resultStoreFunction;
+    private final ExecutorService executorService;
 
     @Getter @Setter private volatile boolean loopStopped = false;
 
@@ -38,6 +40,7 @@ public class TaskRunner {
         this.queueKey = config.getQueueKey();
         this.taskableFunction = config.getTaskableFunction();
         this.resultStoreFunction = config.getResultStoreableFunction();
+        this.executorService = config.getExecutorService();
     }
 
     /**
@@ -144,31 +147,53 @@ public class TaskRunner {
 
     /**
      * 循环运行，检查是否有任务，并且运行任务。
+     *
+     * @param async 是否异步执行
      */
-    public void run() {
+    public void run(boolean async) {
         loopStopped = false;
 
         while (!loopStopped) {
-            if (fire()) continue;
+            fire(-1, async);
             if (TaskUtil.randomSleepMillis(100, 500)) break;
         }
+    }
+
+    public boolean fire() {
+        return fire(1, false) > 0;
     }
 
     /**
      * 运行一次任务。此方法需要放在循环中调用，或者每秒触发一次，以保证实时性。
      *
-     * @return true 成功从队列中抢到一个任务。
+     * @param max   最大数量，-1不限制
+     * @param async 是否异步执行
+     * @return 成功从队列中抢到任务的数量。
      */
-    public boolean fire() {
-        val taskIds = zsetCommands.zrangeByScore(queueKey, 0, System.currentTimeMillis(), 0, 1);
-        if (taskIds.isEmpty()) return false;
+    public int fire(int max, boolean async) {
+        int shot = 0;
+        TAG:
+        while (true) {
+            val taskIds = zsetCommands.zrangeByScore(queueKey, 0, System.currentTimeMillis(), 0, max);
+            if (taskIds.isEmpty()) break;
 
-        val taskId = taskIds.iterator().next();
-        val zrem = zsetCommands.zrem(queueKey, taskId);
-        if (zrem < 1) return false; // 该任务已经被其它人抢走了
+            for (val taskId : taskIds) {
+                val zrem = zsetCommands.zrem(queueKey, taskId);
+                if (zrem < 1) continue; // 该任务已经被其它人抢走了
 
-        fire(taskId);
-        return true;
+                ++shot;
+
+                if (async && executorService != null) {
+                    executorService.submit(() -> fire(taskId));
+                } else {
+                    fire(taskId);
+                }
+
+                if (max > 0 && shot >= max) break TAG;
+            }
+        }
+
+        return shot;
     }
 
 
@@ -216,7 +241,7 @@ public class TaskRunner {
 
         try {
             val taskable = taskableFunction.apply(task.getTaskService());
-            val pair = TaskUtil.timeoutRun(() -> fire(taskable, task), task.getTimeout());
+            val pair = TaskUtil.timeoutRun(executorService, () -> fire(taskable, task), task.getTimeout());
             if (pair._2) {
                 log.warn("执行任务超时🌶{}", task);
                 endTask(task, TaskItem.已超时, TaskResult.of("任务超时"));

@@ -33,11 +33,11 @@ public class TaskUtil {
     }
 
     @SneakyThrows
-    public static <T> Pair<? extends T, Boolean> timeoutRun(Callable<? extends T> runnable, int timeout) {
+    public static <T> Pair<? extends T, Boolean> timeoutRun(ExecutorService executorService, Callable<? extends T> runnable, int timeout) {
         if (timeout <= 0) return Pair.of(runnable.call(), false);
 
-        val executorService = Executors.newSingleThreadExecutor();
-        val future = executorService.submit(runnable);
+        val service = executorService != null ? executorService : Executors.newSingleThreadExecutor();
+        val future = service.submit(runnable);
         try {
             return Pair.of(future.get(timeout, TimeUnit.SECONDS), false);
         } catch (TimeoutException e) {

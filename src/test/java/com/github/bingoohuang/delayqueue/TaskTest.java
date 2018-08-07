@@ -213,7 +213,7 @@ public class TaskTest {
 
     @Test
     public void run() {
-        Executors.newSingleThreadExecutor().submit(() -> taskRunner.run());
+        Executors.newSingleThreadExecutor().submit(() -> taskRunner.run(false));
         TaskUtil.randomSleepMillis(100, 200);
         taskRunner.setLoopStopped(true);
 
@@ -236,7 +236,7 @@ public class TaskTest {
 
     @Test
     public void invokeRedis() {
-        Executors.newSingleThreadExecutor().submit(() -> taskRunner.run());
+        Executors.newSingleThreadExecutor().submit(() -> taskRunner.run(true));
 
         String taskId1 = String.valueOf(WestId.next());
         val vo1 = TaskItemVo.builder()
