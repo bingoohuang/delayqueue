@@ -13,9 +13,9 @@ CREATE TABLE t_delay_task (
  RESULT_STATE varchar(300) NULL COMMENT '任务执行状态',
  RESULT_STORE varchar(100) NOT NULL COMMENT '结果存储方式',
  RESULT TEXT  NULL COMMENT '任务执行详细结果',
- VAR1 varchar(30) NULL COMMENT '参数1',
- VAR2 varchar(30) NULL COMMENT '参数2',
- VAR3 varchar(30) NULL COMMENT '参数3',
+ VAR1 varchar(100) NULL COMMENT '参数1',
+ VAR2 varchar(100) NULL COMMENT '参数2',
+ VAR3 varchar(100) NULL COMMENT '参数3',
  ATTACHMENT   TEXT  NULL COMMENT '附件',
  CREATE_TIME datetime NOT NULL  COMMENT '创建时间',
  PRIMARY KEY (TASK_ID)
