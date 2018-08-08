@@ -1,7 +1,7 @@
 DROP TABLE IF EXISTS t_delay_task;
 CREATE TABLE t_delay_task (
  TASK_ID varchar(20) NOT NULL COMMENT '任务ID',
- RELATIVE_ID varchar(20) NULL COMMENT '关联ID,比如订单ID\会员卡ID\排期ID等',
+ RELATIVE_ID varchar(100) NULL COMMENT '关联ID,比如订单ID\会员卡ID\排期ID等',
  CLASSIFIER varchar(20) NOT NULL COMMENT '任务分类',
  TASK_NAME varchar(100) NOT NULL COMMENT '任务名称',
  TASK_SERVICE varchar(100) NOT NULL COMMENT '任务服务名称，需要实现Taskable接口',
