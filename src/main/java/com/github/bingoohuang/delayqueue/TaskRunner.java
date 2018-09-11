@@ -257,13 +257,15 @@ public class TaskRunner {
 
     private TaskResult fire(Taskable taskable, TaskItem task) {
         taskable.beforeRun(task);
+        Throwable ex = null;
         try {
             return taskable.run(task);
-        } catch (Throwable ex) {
-            taskable.afterRun(task, Optional.of(ex));
-            throw ex;
+        } catch (Throwable e) {
+            ex = e;
+            taskable.afterRun(task, Optional.of(e));
+            throw e;
         } finally {
-            taskable.afterRun(task, Optional.empty());
+            if (ex == null) taskable.afterRun(task, Optional.empty());
         }
     }
 
