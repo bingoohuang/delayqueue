@@ -116,3 +116,7 @@ the sorted set by score range, [like](https://redis.io/commands/zrangebyscore) `
 
 异步任务，包括定时任务，都可以通过DelayQueue库来完成。该库通过Spring中的排程任务，轮询检查Redis中的zset中Score小于等于当前毫秒的元素（值为taskId）,然后通过taskId去数据库中查询任务的详情情况，找到执行任务的Service，然后调用该Service完成任务的调用。
 在Redis的zset上轮询，效率非常高，每秒钟可以达到十万级别，而数据库的轮询效率则只有一万不到。DelayQueue很好地结合了Redis的高性能和数据库的有效存储，来完成异步任务的执行。
+
+任务状态流图：
+![image](https://user-images.githubusercontent.com/1940588/46988045-5d101700-d129-11e8-9a2e-bcfe5744cb9d.png)
+
