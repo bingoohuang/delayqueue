@@ -2,22 +2,27 @@ package com.github.bingoohuang.delayqueue;
 
 import com.github.bingoohuang.delayqueue.spring.TaskDao;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import com.google.common.primitives.Longs;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.joda.time.DateTime;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
 public class TaskRunner {
+    private static final String VERSION_NUMBER_SEP = "@";
     private final TaskDao taskDao;
     private final String taskTableName;
     private final ZsetCommands zsetCommands;
@@ -25,6 +30,7 @@ public class TaskRunner {
     private final Function<String, Taskable> taskableFunction;
     private final Function<String, ResultStoreable> resultStoreFunction;
     private final ExecutorService executorService;
+    private final long versionNumber;
 
     @Getter @Setter private volatile boolean loopStopped = false;
 
@@ -41,6 +47,7 @@ public class TaskRunner {
         this.taskableFunction = config.getTaskableFunction();
         this.resultStoreFunction = config.getResultStoreableFunction();
         this.executorService = config.getExecutorService();
+        this.versionNumber = config.getVersionNumber();
     }
 
     /**
@@ -57,8 +64,8 @@ public class TaskRunner {
         while (System.currentTimeMillis() - start <= timeoutSeconds) {
             TaskUtil.randomSleepMillis(500, 700);
 
-            val task = find(taskItem.getTaskId()).get();
-            if (!task.isReadyRun()) return task;
+            val task = find(taskItem.getTaskId());
+            if (task.isPresent() && !task.get().isReadyRun()) return task.get();
         }
 
         taskItem.setInvokeTimeout(true);
@@ -83,12 +90,11 @@ public class TaskRunner {
      */
     public List<TaskItem> submit(List<TaskItemVo> taskVos) {
         val tasks = taskVos.stream()
-                .map(TaskItemVo::createTaskItem)
+                .map(x -> x.createTaskItem(versionNumber))
                 .collect(Collectors.toList());
         taskDao.add(tasks, taskTableName);
-        val map = tasks.stream().collect(
-                Collectors.toMap(TaskItem::getTaskId,
-                        x -> (double) (x.getRunAt().getMillis())));
+        val map = tasks.stream().collect(Collectors.toMap(
+                this::createTaskIdWithVersionNumber, x -> (double) (x.getRunAt().getMillis())));
         zsetCommands.zadd(queueKey, map);
         return tasks;
     }
@@ -117,7 +123,7 @@ public class TaskRunner {
         val tasks = taskDao.queryTaskIdsByRelativeIds(classifier, relativeIdList, taskTableName);
         if (tasks.isEmpty()) return 0;
 
-        return cancel(reason, tasks.stream().map(x -> x.getTaskId()).collect(Collectors.toList()));
+        return cancel(reason, tasks.stream().map(TaskItem::getTaskId).collect(Collectors.toList()));
     }
 
     /**
@@ -141,9 +147,11 @@ public class TaskRunner {
         val tasks = taskDao.listReady(TaskItem.待运行, classifier, taskTableName);
         if (tasks.isEmpty()) return;
 
-        val map = tasks.stream().collect(Collectors.toMap(TaskItem::getTaskId, x -> (double) (x.getRunAt().getMillis())));
+        val map = tasks.stream().collect(Collectors.toMap(
+                this::createTaskIdWithVersionNumber, x -> (double) (x.getRunAt().getMillis())));
         zsetCommands.zadd(queueKey, map);
     }
+
 
     /**
      * 循环运行，检查是否有任务，并且运行任务。
@@ -172,21 +180,29 @@ public class TaskRunner {
      */
     public int fire(int max, boolean async) {
         int shot = 0;
+        Set<String> excludedTaskIds = Sets.newHashSet();
+
         TAG:
         while (true) {
             val taskIds = zsetCommands.zrangeByScore(queueKey, 0, System.currentTimeMillis(), 0, max);
-            if (taskIds.isEmpty()) break;
+            if (taskIds.isEmpty() || excludedTaskIds.containsAll(taskIds)) break;
 
             for (val taskId : taskIds) {
+                val p = parseVersionNumber(taskId);
+                if (p.getLeft() > versionNumber) {
+                    excludedTaskIds.add(taskId);
+                    continue;
+                }
+
                 val zrem = zsetCommands.zrem(queueKey, taskId);
                 if (zrem < 1) continue; // 该任务已经被其它人抢走了
 
                 ++shot;
 
                 if (async && executorService != null) {
-                    executorService.submit(() -> fire(taskId));
+                    executorService.submit(() -> fire(p.getRight()));
                 } else {
-                    fire(taskId);
+                    fire(p.getRight());
                 }
 
                 if (max > 0 && shot >= max) break TAG;
@@ -196,6 +212,20 @@ public class TaskRunner {
         return shot;
     }
 
+    private String createTaskIdWithVersionNumber(TaskItem x) {
+        return x.getVersionNumber() == 0 ? x.getTaskId()
+                : x.getTaskId() + VERSION_NUMBER_SEP + x.getVersionNumber();
+    }
+
+    private Pair<Long, String> parseVersionNumber(String taskId) {
+        int pos = taskId.lastIndexOf(VERSION_NUMBER_SEP);
+        if (pos < 0) return Pair.of(0L, taskId);
+
+        Long vm = Longs.tryParse(taskId.substring(pos + 1));
+        if (vm == null) return Pair.of(0L, taskId);
+
+        return Pair.of(vm, taskId.substring(0, pos));
+    }
 
     /**
      * 根据ID查找任务。
@@ -204,7 +234,7 @@ public class TaskRunner {
      * @return 找到的任务
      */
     public Optional<TaskItem> find(String taskId) {
-        TaskItem task = taskDao.find(taskId, taskTableName);
+        val task = taskDao.find(taskId, taskTableName);
         if (task != null && task.isComplete()) {
             resultStoreFunction.apply(task.getResultStore()).load(task);
         }

@@ -4,6 +4,7 @@ import com.github.bingoohuang.delayqueue.spring.TaskSpringEnabled;
 import lombok.Cleanup;
 import lombok.SneakyThrows;
 import lombok.val;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -27,5 +28,10 @@ public class SpringConfig {
         redis1.start();
 
         return new Jedis("127.0.0.1", port);
+    }
+
+    @Bean("taskRunner2")
+    public TaskRunner taskRunner2(@Autowired SpringTaskConfigVersionNumber config) {
+        return new TaskRunner(config);
     }
 }

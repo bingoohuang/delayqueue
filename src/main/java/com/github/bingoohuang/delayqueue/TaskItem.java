@@ -28,6 +28,7 @@ public class TaskItem {
     private String var2;          // 参数2
     private String var3;          // 参数3
     private DateTime createTime;  // 创建时间
+    private long versionNumber;   // 任务创建时的程序版本号
 
     private boolean invokeTimeout; // 是否调用超时
 
