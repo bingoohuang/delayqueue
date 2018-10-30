@@ -40,7 +40,7 @@ CREATE TABLE t_delay_task (
 ```
 
 # Scheduled Examples
-1. cron expression
+1. cron expression, like [*/15 * * * *](https://crontab.guru/#*/15_*_*_*_*)
     <pre>
     +--------------------------+-----------------------------------------------+--------------------+
     | Field                    | Allowable values                              | Special Characters |

@@ -35,7 +35,11 @@ public interface TaskDao {
     @Sql("update $$ set STATE = #_1.state#, START_TIME = #_1.startTime# where TASK_ID = #_1.taskId# and STATE = #_2#")
     int start(TaskItem task, String fromState, @Dynamic String taskTableName);
 
-    @Sql("update $$ set STATE = #_1.state#, RUN_AT = #_1.runAt#, END_TIME = #_1.endTime#, RESULT_STATE = #_1.resultState#, RESULT = #_1.result# where TASK_ID = #_1.taskId# and STATE = #_2#")
+    @Sql("update $$ set RELATIVE_ID = #_1.relativeId#, STATE = #_1.state#, RUN_AT = #_1.runAt#, ATTACHMENT = #_1.attachment#, " +
+            "VAR1 = #_1.var1#, VAR2 = #_1.var2#, VAR3 = #_1.var3#, " +
+            "END_TIME = #_1.endTime#, " +
+            "RESULT_STATE = #_1.resultState#, RESULT = #_1.result# " +
+            "where TASK_ID = #_1.taskId# and STATE = #_2#")
     int end(TaskItem task, String fromState, @Dynamic String taskTableName);
 
     @Sql("update $$ set STATE = #_4#, END_TIME = NOW(), RESULT_STATE = #_1# where TASK_ID in (/* in _2 */) and STATE = #_3#")
