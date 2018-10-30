@@ -8,11 +8,15 @@ import java.util.function.Function;
 public interface TaskConfig {
     ZsetCommands getJedis();
 
-    String getQueueKey();
+    default String getQueueKey() {
+        return "delayqueue";
+    }
 
     TaskDao getTaskDao();
 
-    String getTaskTableName();
+    default String getTaskTableName() {
+        return "t_delay_task";
+    }
 
     Function<String, Taskable> getTaskableFunction();
 
