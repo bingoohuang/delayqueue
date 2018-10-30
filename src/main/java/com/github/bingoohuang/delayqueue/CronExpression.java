@@ -1,13 +1,14 @@
 package com.github.bingoohuang.delayqueue;
 
+import com.google.common.collect.ImmutableMap;
+import lombok.RequiredArgsConstructor;
+import lombok.val;
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 import org.joda.time.MutableDateTime;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -17,105 +18,61 @@ import static org.joda.time.DateTimeConstants.DAYS_PER_WEEK;
 
 /**
  * This provides cron support for java6 upwards and jodatime.
- * <p>
- * <p>
+ * <pre>
  * Parser for unix-like cron expressions: Cron expressions allow specifying combinations of criteria for time
- * such as: &quot;Each Monday-Friday at 08:00&quot; or &quot;Every last friday of the month at 01:30&quot;
- * <p>
+ * such as: Each Monday-Friday at 08:00 or Every last friday of the month at 01:30
+ * </pre>
  * A cron expressions consists of 5 or 6 mandatory fields (seconds may be omitted) separated by space. <br>
  * These are:
- *
- * <table cellspacing="8">
- * <tr>
- * <th align="left">Field</th>
- * <th align="left">&nbsp;</th>
- * <th align="left">Allowable values</th>
- * <th align="left">&nbsp;</th>
- * <th align="left">Special Characters</th>
- * </tr>
- * <tr>
- * <td align="left"><code>Seconds (may be omitted)</code></td>
- * <td align="left">&nbsp;</th>
- * <td align="left"><code>0-59</code></td>
- * <td align="left">&nbsp;</th>
- * <td align="left"><code>, - * /</code></td>
- * </tr>
- * <tr>
- * <td align="left"><code>Minutes</code></td>
- * <td align="left">&nbsp;</th>
- * <td align="left"><code>0-59</code></td>
- * <td align="left">&nbsp;</th>
- * <td align="left"><code>, - * /</code></td>
- * </tr>
- * <tr>
- * <td align="left"><code>Hours</code></td>
- * <td align="left">&nbsp;</th>
- * <td align="left"><code>0-23</code></td>
- * <td align="left">&nbsp;</th>
- * <td align="left"><code>, - * /</code></td>
- * </tr>
- * <tr>
- * <td align="left"><code>Day of month</code></td>
- * <td align="left">&nbsp;</th>
- * <td align="left"><code>1-31</code></td>
- * <td align="left">&nbsp;</th>
- * <td align="left"><code>, - * ? / L W</code></td>
- * </tr>
- * <tr>
- * <td align="left"><code>Month</code></td>
- * <td align="left">&nbsp;</th>
- * <td align="left"><code>1-12 or JAN-DEC (note: english abbreviations)</code></td>
- * <td align="left">&nbsp;</th>
- * <td align="left"><code>, - * /</code></td>
- * </tr>
- * <tr>
- * <td align="left"><code>Day of week</code></td>
- * <td align="left">&nbsp;</th>
- * <td align="left"><code>1-7 or MON-SUN (note: english abbreviations)</code></td>
- * <td align="left">&nbsp;</th>
- * <td align="left"><code>, - * ? / L #</code></td>
- * </tr>
- * </table>
- *
- * <p>
- * '*' Can be used in all fields and means 'for all values'. E.g. &quot;*&quot; in minutes, means 'for all minutes'
- * <p>
+ * <pre>
+ * +--------------------------+-----------------------------------------------+--------------------+
+ * | Field                    | Allowable values                              | Special Characters |
+ * +--------------------------+-----------------------------------------------+--------------------+
+ * | Seconds (may be omitted) | 0-59                                          | , - * /            |
+ * +--------------------------+-----------------------------------------------+--------------------+
+ * | Minutes                  | 0-59                                          | , - * /            |
+ * +--------------------------+-----------------------------------------------+--------------------+
+ * | Hours                    | 0-23                                          | , - * /            |
+ * +--------------------------+-----------------------------------------------+--------------------+
+ * | Day of month             | 1-31                                          | , - * ? / L W      |
+ * +--------------------------+-----------------------------------------------+--------------------+
+ * | Month                    | 1-12 or JAN-DEC (note: english abbreviations) | , - * /            |
+ * +--------------------------+-----------------------------------------------+--------------------+
+ * | Day of week              | 1-7 or MON-SUN (note: english abbreviations)  | , - * ? / L #      |
+ * +--------------------------+-----------------------------------------------+--------------------+
+ * </pre>
+ * <pre>
+ * '*' Can be used in all fields and means 'for all values'. E.g. * in minutes, means 'for all minutes'
  * '?' Can be used in Day-of-month and Day-of-week fields. Used to signify 'no special value'. It is used when one want
  * to specify something for one of those two fields, but not the other.
- * <p>
- * '-' Used to specify a time interval. E.g. &quot;10-12&quot; in Hours field means 'for hours 10, 11 and 12'
- * <p>
- * ',' Used to specify multiple values for a field. E.g. &quot;MON,WED,FRI&quot; in Day-of-week field means &quot;for
- * monday, wednesday and friday&quot;
- * <p>
- * '/' Used to specify increments. E.g. &quot;0/15&quot; in Seconds field means &quot;for seconds 0, 15, 30, ad
- * 45&quot;. And &quot;5/15&quot; in seconds field means &quot;for seconds 5, 20, 35, and 50&quot;. If '*' s specified
+ * '-' Used to specify a time interval. E.g. 10-12 in Hours field means 'for hours 10, 11 and 12'
+ * ',' Used to specify multiple values for a field. E.g. MON,WED,FRI in Day-of-week field means for
+ * monday, wednesday and friday
+ * '/' Used to specify increments. E.g. 0/15 in Seconds field means for seconds 0, 15, 30, ad
+ * 45. And 5/15 in seconds field means for seconds 5, 20, 35, and 50. If '*' s specified
  * before '/' it is the same as saying it starts at 0. For every field there's a list of values that can be turned on or
  * off. For Seconds and Minutes these range from 0-59. For Hours from 0 to 23, For Day-of-month it's 1 to 31, For Months
- * 1 to 12. &quot;/&quot; character helsp turn some of these values back on. Thus &quot;7/6&quot; in Months field
+ * 1 to 12. / character helsp turn some of these values back on. Thus 7/6 in Months field
  * specify just Month 7. It doesn't turn on every 6 month following, since cron fields never roll over
- * <p>
  * 'L' Can be used on Day-of-month and Day-of-week fields. It signifies last day of the set of allowed values. In
  * Day-of-month field it's the last day of the month (e.g.. 31 jan, 28 feb (29 in leap years), 31 march, etc.). In
  * Day-of-week field it's Sunday. If there's a prefix, this will be subtracted (5L in Day-of-month means 5 days before
  * last day of Month: 26 jan, 23 feb, etc.)
- * <p>
  * 'W' Can be specified in Day-of-Month field. It specifies closest weekday (monday-friday). Holidays are not accounted
- * for. &quot;15W&quot; in Day-of-Month field means 'closest weekday to 15 i in given month'. If the 15th is a Saturday,
+ * for. 15W in Day-of-Month field means 'closest weekday to 15 i in given month'. If the 15th is a Saturday,
  * it gives Friday. If 15th is a Sunday, the it gives following Monday.
- * <p>
- * '#' Can be used in Day-of-Week field. For example: &quot;5#3&quot; means 'third friday in month' (day 5 = friday, #3
- * - the third). If the day does not exist (e.g. &quot;5#5&quot; - 5th friday of month) and there aren't 5 fridays in
+ * '#' Can be used in Day-of-Week field. For example: 5#3 means 'third friday in month' (day 5 = friday, #3
+ * - the third). If the day does not exist (e.g. 5#5 - 5th friday of month) and there aren't 5 fridays in
  * the month, then it won't match until the next month with 5 fridays.
- * <p>
- * <b>Case-sensitive</b> No fields are case-sensitive
- * <p>
- * <b>Dependencies between fields</b> Fields are always evaluated independently, but the expression doesn't match until
+ *
+ * Case-sensitive: No fields are case-sensitive
+ * Dependencies between fields: Fields are always evaluated independently, but the expression doesn't match until
  * the constraints of each field are met. Overlap of intervals are not allowed. That is: for
- * Day-of-week field &quot;FRI-MON&quot; is invalid,but &quot;FRI-SUN,MON&quot; is valid
+ * Day-of-week field FRI-MON is invalid,but FRI-SUN,MON is valid
+ * </pre>
  */
 public class CronExpression {
-
+    @RequiredArgsConstructor
     enum CronFieldType {
         SECOND(0, 59, null),
         MINUTE(0, 59, null),
@@ -126,12 +83,6 @@ public class CronExpression {
 
         final int from, to;
         final List<String> names;
-
-        CronFieldType(int from, int to, List<String> names) {
-            this.from = from;
-            this.to = to;
-            this.names = names;
-        }
     }
 
     private final String expr;
@@ -146,10 +97,11 @@ public class CronExpression {
         this(expr, true);
     }
 
-    public CronExpression(final String expr, final boolean withSeconds) {
-        if (expr == null) {
-            throw new IllegalArgumentException("expr is null"); //$NON-NLS-1$
+    public CronExpression(String expr, final boolean withSeconds) {
+        if (StringUtils.isEmpty(expr)) {
+            throw new IllegalArgumentException("expr is empty"); //$NON-NLS-1$
         }
+
 
         this.expr = expr;
 

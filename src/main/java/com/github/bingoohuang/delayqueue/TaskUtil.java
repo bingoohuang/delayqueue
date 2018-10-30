@@ -49,8 +49,14 @@ public class TaskUtil {
         }
     }
 
-    public static DateTime emptyThenNow(DateTime dateTime) {
-        return dateTime == null ? DateTime.now() : dateTime;
+    public static DateTime emptyThenNow(DateTime dateTime, CronExpression cron) {
+        return dateTime != null
+                ? dateTime
+
+                : cron == null
+                ? DateTime.now()
+                
+                : cron.nextTimeAfter(DateTime.now());
     }
 
     @SuppressWarnings("unchecked")

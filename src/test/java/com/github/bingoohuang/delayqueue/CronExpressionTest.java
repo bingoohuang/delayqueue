@@ -34,6 +34,14 @@ public class CronExpressionTest {
     }
 
     @Test
+    public void daily() {
+        CronExpression cron = CronAlias.create("@daily");
+        DateTime dt = DateTime.parse("2018-10-30T20:07:23");
+        DateTime next = cron.nextTimeAfter(dt);
+        assertThat(next).isEqualTo(DateTime.parse("2018-10-31T00:00:00"));
+    }
+
+    @Test
     public void shall_parse_number() {
         SimpleField field = new SimpleField(CronFieldType.MINUTE, "5");
         assertPossibleValues(field, 5);

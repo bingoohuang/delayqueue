@@ -30,6 +30,7 @@ CREATE TABLE t_delay_task (
  VAR1 varchar(100) NULL COMMENT '参数1',
  VAR2 varchar(100) NULL COMMENT '参数2',
  VAR3 varchar(100) NULL COMMENT '参数3',
+ SCHEDULED varchar(50) NULL COMMENT '排期',
  CREATE_TIME datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
  VERSION_NUMBER BIGINT(20) NOT NULL DEFAULT 0 COMMENT '任务创建时的程序版本号',
  PRIMARY KEY (TASK_ID),
@@ -37,6 +38,28 @@ CREATE TABLE t_delay_task (
  INDEX `IDX2_T_DELAY_TASK` (`CLASSIFIER`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COMMENT = '任务表';
 ```
+
+# Scheduled Examples
+1. cron expression
+    <pre>
+    +--------------------------+-----------------------------------------------+--------------------+
+    | Field                    | Allowable values                              | Special Characters |
+    +--------------------------+-----------------------------------------------+--------------------+
+    | Minutes                  | 0-59                                          | , - * /            |
+    +--------------------------+-----------------------------------------------+--------------------+
+    | Hours                    | 0-23                                          | , - * /            |
+    +--------------------------+-----------------------------------------------+--------------------+
+    | Day of month             | 1-31                                          | , - * ? / L W      |
+    +--------------------------+-----------------------------------------------+--------------------+
+    | Month                    | 1-12 or JAN-DEC (note: english abbreviations) | , - * /            |
+    +--------------------------+-----------------------------------------------+--------------------+
+    | Day of week              | 1-7 or MON-SUN (note: english abbreviations)  | , - * ? / L #      |
+    +--------------------------+-----------------------------------------------+--------------------+
+    </pre>
+2. @every x minutes/hours (@every x m/h)
+3. @at 12:00
+4. @at ??:40 (every 40 minutes of each hour)
+5. @monthly @weekly @daily @hourly
 
 # Code Demo
 

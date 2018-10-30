@@ -1,6 +1,7 @@
 package com.github.bingoohuang.delayqueue;
 
 import com.github.bingoohuang.delayqueue.spring.TaskDao;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Longs;
@@ -304,10 +305,25 @@ public class TaskRunner {
         task.setResultState(result.getResultState());
         task.setEndTime(DateTime.now());
 
+        rescheduled(task);
+
         if (StringUtils.isNotEmpty(task.getResultStore())) {
             resultStoreFunction.apply(task.getResultStore()).store(task, result);
         }
         taskDao.end(task, TaskItem.运行中, taskTableName);
+    }
+
+    private void rescheduled(TaskItem task) {
+        if (StringUtils.isEmpty(task.getScheduled())) return;
+
+        val cron = CronAlias.create(task.getScheduled());
+        val nextRunAt = cron.nextTimeAfter(task.getStartTime());
+        task.setRunAt(nextRunAt);
+        task.setState(TaskItem.待运行);
+
+        val map = ImmutableMap.of(createTaskIdWithVersionNumber(task),
+                (double) nextRunAt.getMillis());
+        zsetCommands.zadd(queueKey, map);
     }
 }
 

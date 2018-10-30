@@ -94,6 +94,19 @@ public class TaskTest {
         taskRunner2.fire();
         val item22 = taskRunner.find("20002000").get();
         assertThat(item22.getState()).isEqualTo(TaskItem.已完成);
+
+        val vo3 = TaskItemVo.builder()
+                .taskId("30003000").taskName("测试任务").taskServiceClass(MyTaskable.class)
+                .scheduled("@daily")
+                .build();
+        taskRunner.submit(vo3);
+        taskRunner.fire(vo3.getTaskId());
+        val item31 = taskRunner.find(vo3.getTaskId()).get();
+        assertThat(item31.getScheduled()).isEqualTo("@daily");
+        assertThat(item31.getState()).isEqualTo(TaskItem.待运行);
+        assertThat(item31.getRunAt().isAfterNow()).isTrue();
+
+        taskRunner.cancel("手工取消", vo3.getTaskId());
     }
 
     @Test

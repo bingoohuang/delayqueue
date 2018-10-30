@@ -16,8 +16,8 @@ public class TaskUtilTest {
 
     @Test
     public void emptyThenNow() {
-        assertThat(TaskUtil.emptyThenNow(null)).isNotNull();
-        assertThat(TaskUtil.emptyThenNow(DateTime.now())).isNotNull();
+        assertThat(TaskUtil.emptyThenNow(null, null)).isNotNull();
+        assertThat(TaskUtil.emptyThenNow(DateTime.now(), null)).isNotNull();
     }
 
     public interface SubInterface {

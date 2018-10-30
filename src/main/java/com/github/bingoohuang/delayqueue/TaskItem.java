@@ -27,6 +27,7 @@ public class TaskItem {
     private String var1;          // 参数1
     private String var2;          // 参数2
     private String var3;          // 参数3
+    private String scheduled;     // 排期
     private DateTime createTime;  // 创建时间
     private long versionNumber;   // 任务创建时的程序版本号
 
