@@ -57,14 +57,14 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.2</version>
+            <version>1.18.4</version>
             <optional>true</optional>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.7</version>
+            <version>3.8.1</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -74,17 +74,17 @@
         <dependency>
             <groupId>org.ow2.asm</groupId>
             <artifactId>asm</artifactId>
-            <version>6.1.1</version>
+            <version>6.2.1</version>
         </dependency>
         <dependency>
             <groupId>joda-time</groupId>
             <artifactId>joda-time</artifactId>
-            <version>2.10</version>
+            <version>2.10.1</version>
         </dependency>
         <dependency>
             <groupId>com.github.bingoohuang</groupId>
             <artifactId>eql</artifactId>
-            <version>0.1.6</version>
+            <version>0.1.7</version>
         </dependency>
         <dependency>
             <groupId>redis.clients</groupId>
@@ -94,7 +94,7 @@
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>fastjson</artifactId>
-            <version>1.2.47</version>
+            <version>1.2.51</version>
         </dependency>
         <dependency>
             <groupId>com.github.bingoohuang</groupId>
@@ -104,13 +104,13 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-context-support</artifactId>
-            <version>5.1.1.RELEASE</version>
+            <version>5.1.2.RELEASE</version>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-test</artifactId>
-            <version>5.1.1.RELEASE</version>
+            <version>5.1.2.RELEASE</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -146,7 +146,7 @@
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
-            <version>3.6.2</version>
+            <version>3.11.1</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
