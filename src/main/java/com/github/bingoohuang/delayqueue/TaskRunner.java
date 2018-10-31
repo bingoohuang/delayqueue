@@ -121,10 +121,32 @@ public class TaskRunner {
      */
     public int cancelByRelativeIds(String classifier, String reason, String... relativeIds) {
         List<String> relativeIdList = Lists.newArrayList(relativeIds);
-        val tasks = taskDao.queryTaskIdsByRelativeIds(classifier, relativeIdList, taskTableName);
+        val tasks = queryTasksByRelativeIds(classifier, relativeIdList);
         if (tasks.isEmpty()) return 0;
 
         return cancel(reason, tasks.stream().map(TaskItem::getTaskId).collect(Collectors.toList()));
+    }
+
+    /**
+     * 根据关联ID查询任务列表。
+     *
+     * @param classifier 任务分类名称
+     * @param relativeId 关联ID
+     * @return 任务列表
+     */
+    public List<TaskItem> queryTasksByRelativeId(String classifier, String relativeId) {
+        return queryTasksByRelativeIds(classifier, Lists.newArrayList(relativeId));
+    }
+
+    /**
+     * 根据关联ID列表查询任务列表。
+     *
+     * @param classifier     任务分类名称
+     * @param relativeIdList 关联ID列表
+     * @return 任务列表
+     */
+    public List<TaskItem> queryTasksByRelativeIds(String classifier, List<String> relativeIdList) {
+        return taskDao.queryTasksByRelativeIds(classifier, relativeIdList, taskTableName);
     }
 
     /**
@@ -137,6 +159,13 @@ public class TaskRunner {
     public int cancel(String reason, List<String> taskIds) {
         zsetCommands.zrem(queueKey, taskIds.toArray(new String[0]));
         return taskDao.cancelTasks(reason, taskIds, TaskItem.待运行, TaskItem.已取消, taskTableName);
+    }
+
+    /**
+     * 刚启动时，查询所有可以执行的任务，添加到执行列表中。
+     */
+    public void initialize() {
+        initialize("default");
     }
 
     /**

@@ -3,7 +3,6 @@ package com.github.bingoohuang.delayqueue;
 import com.github.bingoohuang.delayqueue.spring.RedisResultStore;
 import com.github.bingoohuang.delayqueue.spring.TaskDao;
 import com.github.bingoohuang.westid.WestId;
-import com.google.common.collect.Lists;
 import lombok.val;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
@@ -52,7 +51,7 @@ public class TaskTest {
     @Test
     public void submit() {
         taskRunner.setLoopStopped(false);
-        taskRunner.initialize("default");
+        taskRunner.initialize();
 
         val attachment = AttachmentVo.builder().name("黄进兵").age(110)
                 .createTime(DateTime.parse("2018-07-19 11:02:17", DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss")))
@@ -64,7 +63,7 @@ public class TaskTest {
                 .build();
         val task = taskRunner.submit(vo);
 
-        taskRunner.initialize("default");
+        taskRunner.initialize();
 
         Set<String> set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
         assertThat(set).contains(task.getTaskId());
@@ -144,7 +143,7 @@ public class TaskTest {
 
         set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
         assertThat(set).isEmpty();
-        val items = taskDao.queryTaskIdsByRelativeIds("default", Lists.newArrayList("120"), taskConfig.getTaskTableName());
+        val items = taskRunner.queryTasksByRelativeId("default", "120");
         assertThat(items).hasSize(1);
         assertThat(items.get(0).getState()).isEqualTo(TaskItem.已取消);
     }

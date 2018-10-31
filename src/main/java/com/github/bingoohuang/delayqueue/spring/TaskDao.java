@@ -26,11 +26,11 @@ public interface TaskDao {
     @Sql(SELECT_CLAUSE + " where TASK_ID = ## ")
     TaskItem find(String taskId, @Dynamic String taskTableName);
 
-    @Sql(SELECT_CLAUSE + " where STATE = ## and RUN_AT < now() and CLASSIFIER = ##")
+    @Sql(SELECT_CLAUSE + " where STATE = ## and CLASSIFIER = ##")
     List<TaskItem> listReady(String state, String classifier, @Dynamic String taskTableName);
 
     @Sql(SELECT_CLAUSE + " where CLASSIFIER = #_1# and RELATIVE_ID in (/* in _2 */) ")
-    List<TaskItem> queryTaskIdsByRelativeIds(String classifier, List<String> relativeIds, @Dynamic String taskTableName);
+    List<TaskItem> queryTasksByRelativeIds(String classifier, List<String> relativeIds, @Dynamic String taskTableName);
 
     @Sql("update $$ set STATE = #_1.state#, START_TIME = #_1.startTime# where TASK_ID = #_1.taskId# and STATE = #_2#")
     int start(TaskItem task, String fromState, @Dynamic String taskTableName);
