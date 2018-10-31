@@ -23,6 +23,8 @@ public class TaskItem {
     private String resultState;   // 任务执行状态
     private String resultStore;   // 结果存储方式，DIRECT直接存储在RESULT字段中，REDIS存储在REDIS中
     private String result;        // 任务运行结果
+    private String hostname;      // 客户端主机名字
+    private String clientIp;      // 客户端IP
     private String attachment;    // 附件
     private String var1;          // 参数1
     private String var2;          // 参数2
