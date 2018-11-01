@@ -34,7 +34,9 @@ public interface TaskDao {
     @Sql(SELECT_CLAUSE + "where CLASSIFIER = #_1# and RELATIVE_ID in (/* in _2 */) ")
     List<TaskItem> queryTasksByRelativeIds(String classifier, List<String> relativeIds, @Dynamic String taskTableName);
 
-    @Sql("update $$ set STATE = #_1.state#, START_TIME = #_1.startTime# where TASK_ID = #_1.taskId# and STATE = #_2#")
+    @Sql("update $$ set STATE = #_1.state#, START_TIME = #_1.startTime#" +
+            ",HOSTNAME = #_host#, CLIENT_IP = #_ip#" +
+            " where TASK_ID = #_1.taskId# and STATE = #_2#")
     int start(TaskItem task, String fromState, @Dynamic String taskTableName);
 
     @Sql("update $$ set RELATIVE_ID = #_1.relativeId#, STATE = #_1.state# " +
@@ -42,12 +44,10 @@ public interface TaskDao {
             ",VAR1 = #_1.var1#, VAR2 = #_1.var2#, VAR3 = #_1.var3# " +
             ",END_TIME = #_1.endTime# " +
             ",RESULT_STATE = #_1.resultState#, RESULT = #_1.result# " +
-            ",HOSTNAME = #_host#, CLIENT_IP = #_ip#" +
             " where TASK_ID = #_1.taskId# and STATE = #_2#")
     void end(TaskItem task, String fromState, @Dynamic String taskTableName);
 
     @Sql("update $$ set STATE = #_4#, END_TIME = NOW(), RESULT_STATE = #_1# " +
-            ",HOSTNAME = #_host#, CLIENT_IP = #_ip#" +
             " where TASK_ID in (/* in _2 */) and STATE = #_3#")
     int cancelTasks(String reason, List<String> taskIds, String fromState, String toState, @Dynamic String taskTableName);
 }
