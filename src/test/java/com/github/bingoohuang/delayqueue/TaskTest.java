@@ -2,6 +2,7 @@ package com.github.bingoohuang.delayqueue;
 
 import com.github.bingoohuang.delayqueue.spring.RedisResultStore;
 import com.github.bingoohuang.delayqueue.spring.TaskDao;
+import com.github.bingoohuang.utils.lang.Threadx;
 import com.github.bingoohuang.westid.WestId;
 import lombok.val;
 import org.joda.time.DateTime;
@@ -223,7 +224,7 @@ public class TaskTest {
         Set<String> set = jedis.zrangeByScore(taskConfig.getQueueKey(), 0, System.currentTimeMillis());
         assertThat(set).isEmpty();
 
-        TaskUtil.randomSleepMillis(1500, 1800);
+        Threadx.randomSleepMillis(1500, 1800);
 
         taskRunner.fire();
 
@@ -250,7 +251,7 @@ public class TaskTest {
     @Test
     public void run() {
         Executors.newSingleThreadExecutor().submit(() -> taskRunner.run(false));
-        TaskUtil.randomSleepMillis(100, 200);
+        Threadx.randomSleepMillis(100, 200);
         taskRunner.setLoopStopped(true);
 
         assertThat(taskRunner.isLoopStopped()).isTrue();

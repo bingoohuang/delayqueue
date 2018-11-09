@@ -1,6 +1,8 @@
 package com.github.bingoohuang.delayqueue;
 
 import com.github.bingoohuang.delayqueue.spring.TaskDao;
+import com.github.bingoohuang.utils.cron.CronAlias;
+import com.github.bingoohuang.utils.lang.Threadx;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -63,7 +65,7 @@ public class TaskRunner {
 
         val start = System.currentTimeMillis();
         while (System.currentTimeMillis() - start <= timeoutSeconds) {
-            TaskUtil.randomSleepMillis(500, 700);
+            Threadx.randomSleepMillis(500, 700);
 
             val task = find(taskItem.getTaskId());
             if (task.isPresent() && !task.get().isReadyRun()) return task.get();
@@ -193,7 +195,7 @@ public class TaskRunner {
 
         while (!loopStopped) {
             fire(-1, async);
-            if (TaskUtil.randomSleepMillis(100, 500)) break;
+            if (Threadx.randomSleepMillis(100, 500)) break;
         }
     }
 

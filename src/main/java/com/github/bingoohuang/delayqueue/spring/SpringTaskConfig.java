@@ -1,6 +1,10 @@
 package com.github.bingoohuang.delayqueue.spring;
 
-import com.github.bingoohuang.delayqueue.*;
+import com.github.bingoohuang.delayqueue.ResultStoreable;
+import com.github.bingoohuang.delayqueue.TaskConfig;
+import com.github.bingoohuang.delayqueue.Taskable;
+import com.github.bingoohuang.delayqueue.ZsetCommands;
+import com.github.bingoohuang.utils.proxy.Adapter;
 import lombok.Cleanup;
 import lombok.Getter;
 import lombok.SneakyThrows;
@@ -34,7 +38,7 @@ public class SpringTaskConfig implements TaskConfig {
     }
 
     @Override public ZsetCommands getJedis() {
-        return TaskUtil.adapt(jedis, ZsetCommands.class);
+        return Adapter.adapt(jedis, ZsetCommands.class);
     }
 
     @Override public Function<String, Taskable> getTaskableFunction() {
