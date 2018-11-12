@@ -3,6 +3,7 @@ package com.github.bingoohuang.delayqueue;
 import com.github.bingoohuang.delayqueue.spring.RedisResultStore;
 import com.github.bingoohuang.delayqueue.spring.TaskDao;
 import com.github.bingoohuang.utils.lang.Threadx;
+import com.github.bingoohuang.utils.time.DateTimes;
 import com.github.bingoohuang.westid.WestId;
 import lombok.val;
 import org.joda.time.DateTime;
@@ -107,6 +108,25 @@ public class TaskTest {
         assertThat(item31.getRunAt().isAfterNow()).isTrue();
 
         taskRunner.cancel("手工取消", vo3.getTaskId());
+    }
+
+    @Test
+    public void adjust() {
+        val vo = TaskItemVo.builder()
+                .taskId("40004000").taskName("测试任务4").taskService(MyTaskable.class.getSimpleName())
+                .runAt(DateTimes.tomorrowZero())
+                .build();
+
+        TaskItem task = taskRunner.submit(vo);
+
+        task.setRunAt(DateTime.now().plusHours(1));
+
+        taskRunner.adjustTask(task);
+        taskRunner.cancel("不玩了", task.getTaskId());
+
+        task.setTaskId("40004001");
+        taskRunner.adjustTask(task);
+        taskRunner.cancel("不玩了", task.getTaskId());
     }
 
     @Test

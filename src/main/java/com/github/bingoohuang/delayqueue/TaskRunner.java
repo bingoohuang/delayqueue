@@ -2,6 +2,7 @@ package com.github.bingoohuang.delayqueue;
 
 import com.github.bingoohuang.delayqueue.spring.TaskDao;
 import com.github.bingoohuang.utils.cron.CronAlias;
+import com.github.bingoohuang.utils.lang.Mapp;
 import com.github.bingoohuang.utils.lang.Threadx;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -95,11 +96,35 @@ public class TaskRunner {
         val tasks = taskVos.stream()
                 .map(x -> x.createTaskItem(versionNumber))
                 .collect(Collectors.toList());
+        return submitTasks(tasks);
+    }
+
+    private List<TaskItem> submitTasks(List<TaskItem> tasks) {
         taskDao.add(tasks, taskTableName);
         val map = tasks.stream().collect(Collectors.toMap(
                 this::createTaskIdWithVersionNumber, x -> (double) (x.getRunAt().getMillis())));
         zsetCommands.zadd(queueKey, map);
         return tasks;
+    }
+
+    /**
+     * 调整任务，包括调整任务执行时间，或者任务其它属性。
+     *
+     * @param taskItem 任务。
+     */
+    public void adjustTask(TaskItem taskItem) {
+        val oldTask = find(taskItem.getTaskId());
+        if (!oldTask.isPresent()) {
+            submitTasks(Lists.newArrayList(taskItem));
+            return;
+        }
+
+        taskDao.updateTask(taskItem);
+        if (!oldTask.get().getRunAt().equals(taskItem.getRunAt()) && TaskItem.待运行.equals(taskItem.getState())) {
+            val key = createTaskIdWithVersionNumber(taskItem);
+            val map = Mapp.of(key, (double) (taskItem.getRunAt().getMillis()));
+            zsetCommands.zadd(queueKey, map);
+        }
     }
 
     /**
@@ -199,6 +224,11 @@ public class TaskRunner {
         }
     }
 
+    /**
+     * 触发一次任务运行。尝试获取一条任务，并执行之。
+     *
+     * @return 是否成功获取任务并执行。
+     */
     public boolean fire() {
         return fire(1, false) > 0;
     }

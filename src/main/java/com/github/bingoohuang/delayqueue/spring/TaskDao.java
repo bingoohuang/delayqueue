@@ -50,4 +50,29 @@ public interface TaskDao {
     @Sql("update $$ set STATE = #_4#, END_TIME = NOW(), RESULT_STATE = #_1# " +
             " where TASK_ID in (/* in _2 */) and STATE = #_3#")
     int cancelTasks(String reason, List<String> taskIds, String fromState, String toState, @Dynamic String taskTableName);
+
+    @Sql("update t_delay_task " +
+            "set " +
+            "RELATIVE_ID = '#relativeId#', " +
+            "`CLASSIFIER` = '#classifier#', " +
+            "TASK_NAME = '#taskName#', " +
+            "TASK_SERVICE = '#taskService#', " +
+            "`STATE` = '#state#', " +
+            "RUN_AT = '#runAt#', " +
+            "`TIMEOUT` = '#timeout#', " +
+            "START_TIME = '#startTime#', " +
+            "END_TIME = '#endTime#', " +
+            "RESULT_STATE = '#resultState#', " +
+            "RESULT_STORE = '#resultStore#', " +
+            "`RESULT` = '#result#', " +
+            "`HOSTNAME` = '#_host#', " +
+            "CLIENT_IP = '#_ip#', " +
+            "`ATTACHMENT` = '#attachment#', " +
+            "`VAR1` = '#var1#', " +
+            "`VAR2` = '#var2#', " +
+            "`VAR3` = '#var3#', " +
+            "`SCHEDULED` = '#scheduled#', " +
+            "VERSION_NUMBER = '#versionNumber#' " +
+            "where TASK_ID = '#taskId#'")
+    void updateTask(TaskItem taskItem);
 }
