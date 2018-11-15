@@ -50,4 +50,13 @@ public interface TaskConfig {
     default long getVersionNumber() {
         return 0L;
     }
+
+    /**
+     * 不在起始状态并且上次开始时间在多少分钟以前，可以重新触发任务执行。
+     *
+     * @return 上次开始时间在多少分钟以前。
+     */
+    default int getLastRunMinutesAgo() {
+        return 10;
+    }
 }

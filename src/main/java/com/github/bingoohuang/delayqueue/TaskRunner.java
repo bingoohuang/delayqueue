@@ -4,7 +4,6 @@ import com.github.bingoohuang.delayqueue.spring.TaskDao;
 import com.github.bingoohuang.utils.cron.CronAlias;
 import com.github.bingoohuang.utils.lang.Mapp;
 import com.github.bingoohuang.utils.lang.Threadx;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.Longs;
@@ -14,7 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.joda.time.DateTime;
 
 import java.util.Arrays;
 import java.util.List;
@@ -23,6 +21,9 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static com.google.common.collect.ImmutableMap.of;
+import static org.joda.time.DateTime.now;
 
 @Slf4j
 public class TaskRunner {
@@ -35,6 +36,7 @@ public class TaskRunner {
     private final Function<String, ResultStoreable> resultStoreFunction;
     private final ExecutorService executorService;
     private final long versionNumber;
+    private final int lastRunMinutesAgo;
 
     @Getter @Setter private volatile boolean loopStopped = false;
 
@@ -52,6 +54,7 @@ public class TaskRunner {
         this.resultStoreFunction = config.getResultStoreableFunction();
         this.executorService = config.getExecutorService();
         this.versionNumber = config.getVersionNumber();
+        this.lastRunMinutesAgo = config.getLastRunMinutesAgo();
     }
 
     /**
@@ -323,11 +326,17 @@ public class TaskRunner {
      * @param task 任务
      */
     public void fire(TaskItem task) {
-        task.setStartTime(DateTime.now());
+        task.setStartTime(now());
         task.setState(TaskItem.运行中);
-        int changed = taskDao.start(task, TaskItem.待运行, taskTableName);
+        int changed = taskDao.start(task, TaskItem.待运行, now().minusMinutes(lastRunMinutesAgo), taskTableName);
         if (changed == 0) {
-            log.debug("任务状态不是待运行{}", task);
+            log.debug("任务状态不是待运行，或者上次开始时间不在{}分钟以前， task={}", lastRunMinutesAgo, task);
+
+            // 对于定期执行的，排定好下次的运行时间
+            // 解决问题：开发环境和测试环境连接同一个数据库，但是拥有不同的redis，然后开发环境抢到了任务，导致任务不能在测试环境继续运行。
+            // 开发环境抢到了任务后，若执行成功，也是在本机redis上放置下一次运行时间的触发器；若中断执行，导致任务一直处于"待运行"状态。
+            // 因此此处添加下一次运行时间，保证测试环境对任务的下一次运行时间触发。
+            addNextFireTime4ScheduledTask(task);
             return;
         }
 
@@ -364,9 +373,9 @@ public class TaskRunner {
     private void endTask(TaskItem task, String finalState, TaskResult result) {
         task.setState(finalState);
         task.setResultState(result.getResultState());
-        task.setEndTime(DateTime.now());
+        task.setEndTime(now());
 
-        rescheduled(task);
+        addNextFireTime4ScheduledTask(task);
 
         if (StringUtils.isNotEmpty(task.getResultStore())) {
             resultStoreFunction.apply(task.getResultStore()).store(task, result);
@@ -374,7 +383,7 @@ public class TaskRunner {
         taskDao.end(task, TaskItem.运行中, taskTableName);
     }
 
-    private void rescheduled(TaskItem task) {
+    private void addNextFireTime4ScheduledTask(TaskItem task) {
         if (StringUtils.isEmpty(task.getScheduled())) return;
 
         val cron = CronAlias.create(task.getScheduled());
@@ -382,8 +391,7 @@ public class TaskRunner {
         task.setRunAt(nextRunAt);
         task.setState(TaskItem.待运行);
 
-        val map = ImmutableMap.of(createTaskIdWithVersionNumber(task),
-                (double) nextRunAt.getMillis());
+        val map = of(createTaskIdWithVersionNumber(task), (double) nextRunAt.getMillis());
         zsetCommands.zadd(queueKey, map);
     }
 }

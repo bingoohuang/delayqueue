@@ -1,6 +1,7 @@
 package com.github.bingoohuang.delayqueue.spring;
 
 import com.github.bingoohuang.delayqueue.TaskItem;
+import org.joda.time.DateTime;
 import org.n3r.eql.eqler.annotations.Dynamic;
 import org.n3r.eql.eqler.annotations.Eqler;
 import org.n3r.eql.eqler.annotations.Sql;
@@ -34,10 +35,19 @@ public interface TaskDao {
     @Sql(SELECT_CLAUSE + "where CLASSIFIER = #_1# and RELATIVE_ID in (/* in _2 */) ")
     List<TaskItem> queryTasksByRelativeIds(String classifier, List<String> relativeIds, @Dynamic String taskTableName);
 
+    /**
+     * 开始任务。
+     *
+     * @param task           任务。
+     * @param fromState      起始状态。
+     * @param maxLastRunTime 或者不在起始状态并且上次开始时间在本时间以前。
+     * @param taskTableName  任务表名。
+     * @return 成功更新行数。
+     */
     @Sql("update $$ set STATE = #_1.state#, START_TIME = #_1.startTime#" +
             ",HOSTNAME = #_host#, CLIENT_IP = #_ip#" +
-            " where TASK_ID = #_1.taskId# and STATE = #_2#")
-    int start(TaskItem task, String fromState, @Dynamic String taskTableName);
+            " where TASK_ID = #_1.taskId# and (STATE = #_2# or START_TIME < #_3#)")
+    int start(TaskItem task, String fromState, DateTime maxLastRunTime, @Dynamic String taskTableName);
 
     @Sql("update $$ set RELATIVE_ID = #_1.relativeId#, STATE = #_1.state# " +
             ",RUN_AT = #_1.runAt#, ATTACHMENT = #_1.attachment# " +
@@ -49,7 +59,8 @@ public interface TaskDao {
 
     @Sql("update $$ set STATE = #_4#, END_TIME = NOW(), RESULT_STATE = #_1# " +
             " where TASK_ID in (/* in _2 */) and STATE = #_3#")
-    int cancelTasks(String reason, List<String> taskIds, String fromState, String toState, @Dynamic String taskTableName);
+    int cancelTasks(String reason, List<String> taskIds, String fromState, String toState,
+                    @Dynamic String taskTableName);
 
     @Sql("update t_delay_task " +
             "set " +
