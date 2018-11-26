@@ -46,7 +46,7 @@
         <dependency>
             <groupId>com.github.bingoohuang</groupId>
             <artifactId>java-utils</artifactId>
-            <version>0.0.15</version>
+            <version>0.0.22</version>
         </dependency>
         <dependency>
             <groupId>cglib</groupId>
@@ -57,7 +57,7 @@
         <dependency>
             <groupId>com.github.bingoohuang</groupId>
             <artifactId>westcache</artifactId>
-            <version>0.0.33</version>
+            <version>0.0.35</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -89,7 +89,7 @@
         <dependency>
             <groupId>com.github.bingoohuang</groupId>
             <artifactId>eql</artifactId>
-            <version>0.1.7</version>
+            <version>0.1.9</version>
         </dependency>
         <dependency>
             <groupId>redis.clients</groupId>
@@ -99,7 +99,7 @@
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>fastjson</artifactId>
-            <version>1.2.51</version>
+            <version>1.2.53</version>
         </dependency>
         <dependency>
             <groupId>com.github.bingoohuang</groupId>
