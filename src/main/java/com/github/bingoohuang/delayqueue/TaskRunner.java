@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.joda.time.DateTime;
 
 import java.util.Arrays;
 import java.util.List;
@@ -104,10 +105,7 @@ public class TaskRunner {
 
     private List<TaskItem> submitTasks(List<TaskItem> tasks) {
         taskDao.add(tasks, taskTableName);
-        val map = tasks.stream().collect(Collectors.toMap(
-                this::createTaskIdWithVersionNumber, x -> (double) (x.getRunAt().getMillis())));
-        zsetCommands.zadd(queueKey, map);
-        return tasks;
+        return triggerTask(tasks);
     }
 
     /**
@@ -207,9 +205,14 @@ public class TaskRunner {
         val tasks = taskDao.listReady(TaskItem.待运行, classifier, taskTableName);
         if (tasks.isEmpty()) return;
 
+        triggerTask(tasks);
+    }
+
+    public List<TaskItem> triggerTask(List<TaskItem> tasks) {
         val map = tasks.stream().collect(Collectors.toMap(
                 this::createTaskIdWithVersionNumber, x -> (double) (x.getRunAt().getMillis())));
         zsetCommands.zadd(queueKey, map);
+        return tasks;
     }
 
 
@@ -381,6 +384,8 @@ public class TaskRunner {
             resultStoreFunction.apply(task.getResultStore()).store(task, result);
         }
         taskDao.end(task, TaskItem.运行中, taskTableName);
+
+        if (result.isFireAgain()) triggerTask(task, DateTime.now());
     }
 
     private void addNextFireTime4ScheduledTask(TaskItem task) {
@@ -391,6 +396,10 @@ public class TaskRunner {
         task.setRunAt(nextRunAt);
         task.setState(TaskItem.待运行);
 
+        triggerTask(task, nextRunAt);
+    }
+
+    private void triggerTask(TaskItem task, DateTime nextRunAt) {
         val map = of(createTaskIdWithVersionNumber(task), (double) nextRunAt.getMillis());
         zsetCommands.zadd(queueKey, map);
     }

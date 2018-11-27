@@ -51,6 +51,23 @@ public class TaskTest {
     }
 
     @Test
+    public void fireAgain() {
+        taskRunner.setLoopStopped(false);
+
+        val vo = TaskItemVo.builder()
+                .taskId("FIRE_AGAIN_110").taskName("测试任务").taskServiceClass(FireAgainTaskable.class)
+                .relativeId("关联ID")
+                .build();
+        val task = taskRunner.submit(vo);
+        taskRunner.fire(task);
+
+        Set<String> set = jedis.zrange(taskConfig.getQueueKey(), 0, -1);
+        assertThat(set).contains(task.getTaskId());
+
+        taskRunner.cancel("取消", task.getTaskId());
+    }
+
+    @Test
     public void submit() {
         taskRunner.setLoopStopped(false);
         taskRunner.initialize();
