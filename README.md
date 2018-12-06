@@ -69,12 +69,44 @@ CREATE TABLE t_delay_task (
 ```java
 
 @Component @Slf4j
-public class TaskServiceScheduling {
+public class TaskServiceScheduling implements ApplicationListener<ContextRefreshedEvent> {
     @Autowired TaskRunner taskRunner;
+    @Override public void onApplicationEvent(ContextRefreshedEvent contextRefreshedEvent) {
+       init();
+    }
 
     @Scheduled(fixedDelay = 1000, initialDelay = 10000)
     public void tasking() {
         taskRunner.fire(); // fire every 1 second
+    }
+    
+    
+    private void init() {
+        initTask("1541421482177", "处理当天没完成的测评", UnfinishedEvaluationDealTask.class, "@at 23:50");
+
+        try {
+            taskRunner.initialize();
+        } catch (Exception ex) {
+            log.warn("init tasks error", ex);
+        }
+    }
+    /**
+     * 主动触发任务。
+     */
+    public void firePaperInstanceResultTask() {
+        taskRunner.fire("1540880531777");
+    }
+    
+    private void initTask(String taskId, String taskName, Class<?> taskServiceClass, String scheduled) {
+        val taskItem = taskRunner.find(taskId);
+        if (taskItem.isPresent()) return;
+    
+        taskRunner.submit(TaskItemVo.builder()
+                .taskId(taskId)
+                .taskServiceClass(taskServiceClass)
+                .scheduled(scheduled)
+                .taskName(taskName)
+                .build());
     }
 }
 
