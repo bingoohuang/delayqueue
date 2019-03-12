@@ -5,7 +5,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class SpringTaskConfigVersionNumber extends SpringTaskConfig {
-    @Override public long getVersionNumber() {
-        return 20181016L;
-    }
+  @Override
+  public long getVersionNumber() {
+    return 20181016L;
+  }
 }

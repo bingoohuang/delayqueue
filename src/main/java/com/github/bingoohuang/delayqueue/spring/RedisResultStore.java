@@ -10,22 +10,24 @@ import redis.clients.jedis.JedisCommands;
 
 @Component
 public class RedisResultStore implements ResultStoreable {
-    private final JedisCommands jedisCommands;
+  private final JedisCommands jedisCommands;
 
-    public RedisResultStore(@Autowired JedisCommands jedisCommands) {
-        this.jedisCommands = jedisCommands;
-    }
+  public RedisResultStore(@Autowired JedisCommands jedisCommands) {
+    this.jedisCommands = jedisCommands;
+  }
 
-    @Override public void store(TaskItem taskItem, TaskResult taskResult) {
-        taskItem.setResultState(taskResult.getResultState());
-        String json = FastJsons.json(taskResult.getResult());
-        jedisCommands.setex("delayqueue:" + taskItem.getTaskId(), 7 * 24 * 60 * 60, json);
+  @Override
+  public void store(TaskItem taskItem, TaskResult taskResult) {
+    taskItem.setResultState(taskResult.getResultState());
+    String json = FastJsons.json(taskResult.getResult());
+    jedisCommands.setex("delayqueue:" + taskItem.getTaskId(), 7 * 24 * 60 * 60, json);
 
-        taskItem.setResult(null);
-    }
+    taskItem.setResult(null);
+  }
 
-    @Override public void load(TaskItem taskItem) {
-        String json = jedisCommands.get("delayqueue:" + taskItem.getTaskId());
-        taskItem.setResult(json);
-    }
+  @Override
+  public void load(TaskItem taskItem) {
+    String json = jedisCommands.get("delayqueue:" + taskItem.getTaskId());
+    taskItem.setResult(json);
+  }
 }

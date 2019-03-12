@@ -8,6 +8,4 @@ import java.lang.annotation.*;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Import(TaskSpringConfig.class)
-public @interface TaskSpringEnabled {
-
-}
+public @interface TaskSpringEnabled {}

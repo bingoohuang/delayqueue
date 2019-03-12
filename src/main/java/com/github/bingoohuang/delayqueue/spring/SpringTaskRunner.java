@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class SpringTaskRunner extends TaskRunner {
-    public SpringTaskRunner(@Autowired @Qualifier("springTaskConfig") SpringTaskConfig config) {
-        super(config);
-    }
+  public SpringTaskRunner(@Autowired @Qualifier("springTaskConfig") SpringTaskConfig config) {
+    super(config);
+  }
 }

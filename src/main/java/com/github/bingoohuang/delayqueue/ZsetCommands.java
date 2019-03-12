@@ -4,9 +4,9 @@ import java.util.Map;
 import java.util.Set;
 
 public interface ZsetCommands {
-    Long zadd(String key, Map<String, Double> scoreMembers);
+  Long zadd(String key, Map<String, Double> scoreMembers);
 
-    Long zrem(String key, String... member);
+  Long zrem(String key, String... member);
 
-    Set<String> zrangeByScore(String key, double min, double max, int offset, int count);
+  Set<String> zrangeByScore(String key, double min, double max, int offset, int count);
 }

@@ -7,14 +7,15 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class SpringBeanFactory implements ApplicationContextAware {
-    private ApplicationContext appContext;
+  private ApplicationContext appContext;
 
-    @SuppressWarnings("unchecked")
-    public <T> T getBean(String name) {
-        return (T) appContext.getBean(StringUtils.uncapitalize(name));
-    }
+  @SuppressWarnings("unchecked")
+  public <T> T getBean(String name) {
+    return (T) appContext.getBean(StringUtils.uncapitalize(name));
+  }
 
-    @Override public void setApplicationContext(ApplicationContext appContext) {
-        this.appContext = appContext;
-    }
+  @Override
+  public void setApplicationContext(ApplicationContext appContext) {
+    this.appContext = appContext;
+  }
 }
