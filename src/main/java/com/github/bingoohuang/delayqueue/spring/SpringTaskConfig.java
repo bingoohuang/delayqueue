@@ -9,6 +9,7 @@ import lombok.Cleanup;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.val;
+import org.joda.time.DateTime;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import redis.clients.jedis.JedisCommands;
@@ -32,9 +33,19 @@ public class SpringTaskConfig implements TaskConfig {
     @Cleanup val is = classLoader.getResourceAsStream("delayqueue.properties");
 
     val p = new Properties();
-    if (is != null) p.load(is);
+    if (is != null) {
+      p.load(is);
+    }
 
-    this.queueKey = l -> p.getProperty("QueueKey", "delayqueue");
+    val prefix = p.getProperty("QueueKey", "delayqueue");
+    this.queueKey =
+        "true".equals(p.getProperty("DailyQueueKey", "false"))
+            ? l -> {
+              val zeroMillis = DateTime.now().withTimeAtStartOfDay().getMillis();
+              val day = l < zeroMillis ? zeroMillis : l;
+              return prefix + "_" + new DateTime(day).toString("yyyyMMdd");
+            }
+            : l -> prefix;
     this.taskTableName = p.getProperty("TaskTableName", "t_delay_task");
   }
 

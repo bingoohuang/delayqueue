@@ -3,6 +3,7 @@ package com.github.bingoohuang.delayqueue;
 import com.github.bingoohuang.delayqueue.spring.TaskSpringEnabled;
 import lombok.Cleanup;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -16,6 +17,7 @@ import java.net.ServerSocket;
 @Configuration
 @ComponentScan
 @TaskSpringEnabled
+@Slf4j
 public class SpringConfig {
   @SneakyThrows
   public static int getRandomPort() {
@@ -28,6 +30,8 @@ public class SpringConfig {
     int port = getRandomPort();
     val redis1 = new RedisServer(port);
     redis1.start();
+
+    log.warn("startup redis on {}", port);
 
     return new Jedis("127.0.0.1", port);
   }
