@@ -2,6 +2,7 @@ package com.github.bingoohuang.delayqueue.spring;
 
 import com.github.bingoohuang.delayqueue.TaskItem;
 import org.joda.time.DateTime;
+import org.n3r.eql.EqlTranable;
 import org.n3r.eql.eqler.annotations.Dynamic;
 import org.n3r.eql.eqler.annotations.Eqler;
 import org.n3r.eql.eqler.annotations.Sql;
@@ -9,7 +10,7 @@ import org.n3r.eql.eqler.annotations.Sql;
 import java.util.List;
 
 @Eqler
-public interface TaskDao {
+public interface TaskDao extends EqlTranable {
   @Sql(
       "insert into $$(TASK_ID, RELATIVE_ID, CLASSIFIER, TASK_NAME, TASK_SERVICE, STATE, RUN_AT, "
           + "TIMEOUT, START_TIME, END_TIME, RESULT, HOSTNAME, CLIENT_IP, ATTACHMENT, VAR1,VAR2,VAR3, "
@@ -74,7 +75,7 @@ public interface TaskDao {
       @Dynamic String taskTableName);
 
   @Sql(
-      "update t_delay_task "
+      "update $$ "
           + "set "
           + "RELATIVE_ID = '#relativeId#', "
           + "`CLASSIFIER` = '#classifier#', "
@@ -97,5 +98,5 @@ public interface TaskDao {
           + "`SCHEDULED` = '#scheduled#', "
           + "VERSION_NUMBER = '#versionNumber#' "
           + "where TASK_ID = '#taskId#'")
-  void updateTask(TaskItem taskItem);
+  void updateTask(TaskItem taskItem, @Dynamic String taskTableName);
 }
