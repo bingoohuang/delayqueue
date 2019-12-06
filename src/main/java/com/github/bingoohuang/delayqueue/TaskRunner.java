@@ -116,7 +116,7 @@ public class TaskRunner {
       return;
     }
 
-    taskDao.updateTask(taskItem);
+    taskDao.updateTask(taskItem, taskTableName);
     if (!oldTask.get().getRunAt().equals(taskItem.getRunAt())
         && TaskItem.待运行.equals(taskItem.getState())) {
       val key = createTaskIdWithVersionNumber(taskItem);
@@ -341,20 +341,21 @@ public class TaskRunner {
   public void fire(TaskItem task) {
     task.setStartTime(now());
     task.setState(TaskItem.运行中);
-    int changed =
-        taskDao.start(task, TaskItem.待运行, now().minusMinutes(lastRunMinutesAgo), taskTableName);
-    if (changed == 0) {
-      log.debug("任务状态不是待运行，或者上次开始时间不在{}分钟以前， task={}", lastRunMinutesAgo, task);
+    try{
+      taskDao.start();
+      int changed =
+          taskDao.start(task, TaskItem.待运行, now().minusMinutes(lastRunMinutesAgo), taskTableName);
+        if (changed == 0) {
+        log.debug("任务状态不是待运行，或者上次开始时间不在{}分钟以前， task={}", lastRunMinutesAgo, task);
 
       // 对于定期执行的，排定好下次的运行时间
       // 解决问题：开发环境和测试环境连接同一个数据库，但是拥有不同的redis，然后开发环境抢到了任务，导致任务不能在测试环境继续运行。
       // 开发环境抢到了任务后，若执行成功，也是在本机redis上放置下一次运行时间的触发器；若中断执行，导致任务一直处于"待运行"状态。
       // 因此此处添加下一次运行时间，保证测试环境对任务的下一次运行时间触发。
-      addNextFireTime4ScheduledTask(task);
-      return;
-    }
+        addNextFireTime4ScheduledTask(task);
+        return;
+      }
 
-    try {
       val taskable = taskableFunction.apply(task.getTaskService());
       val pair =
           TaskUtil.timeoutRun(executorService, () -> fire(taskable, task), task.getTimeout());
@@ -365,9 +366,13 @@ public class TaskRunner {
         log.info("执行任务成功👌{}", task);
         endTask(task, TaskItem.已完成, pair._1);
       }
+      taskDao.commit();
     } catch (Exception ex) {
       log.warn("执行任务异常😂{}", task, ex);
       endTask(task, TaskItem.已失败, TaskResult.of(ex.toString()));
+    } finally {
+        taskDao.commit();
+        taskDao.close();
     }
   }
 
