@@ -116,7 +116,7 @@ public class TaskRunner {
       return;
     }
 
-    taskDao.updateTask(taskItem);
+    taskDao.updateTask(taskItem, taskTableName);
     if (!oldTask.get().getRunAt().equals(taskItem.getRunAt())
         && TaskItem.待运行.equals(taskItem.getState())) {
       val key = createTaskIdWithVersionNumber(taskItem);
