@@ -74,7 +74,7 @@ public interface TaskDao {
       @Dynamic String taskTableName);
 
   @Sql(
-      "update t_delay_task "
+      "update $$ "
           + "set "
           + "RELATIVE_ID = '#relativeId#', "
           + "`CLASSIFIER` = '#classifier#', "
@@ -97,5 +97,5 @@ public interface TaskDao {
           + "`SCHEDULED` = '#scheduled#', "
           + "VERSION_NUMBER = '#versionNumber#' "
           + "where TASK_ID = '#taskId#'")
-  void updateTask(TaskItem taskItem);
+  void updateTask(TaskItem taskItem, @Dynamic String taskTableName);
 }
